@@ -61,7 +61,6 @@ const services = [
   { name: "Max", color: "#9272ff", url: "https://www.max.com/" },
   { name: "Disney+", color: "#3c72ff", url: "https://www.disneyplus.com/" },
   { name: "Apple TV+", color: "#d7d7d7", url: "https://tv.apple.com/" },
-  { name: "Google TV", color: "#4285f4", url: "https://tv.google/" },
 ];
 const genres = [
   "Todos",

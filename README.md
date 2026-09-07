@@ -26,6 +26,17 @@ El archivo `.env.local` nunca debe subirse a GitHub. Las reglas restringen las s
 
 Si defines `VITE_TMDB_API_KEY`, el catálogo se actualiza con metadatos e imágenes de TMDB. Sin esa variable se utiliza el catálogo de demostración incluido. La app no aloja ni reproduce contenido protegido: los botones de servicios abren los sitios oficiales de Netflix, Prime Video, Max, Disney+ y Apple TV+.
 
+### Google dentro de la app
+
+Google TV no forma parte del catálogo. Para ofrecer una búsqueda de Google dentro de la interfaz, la opción correcta es Google Programmable Search, no un `iframe` de `google.com`.
+
+1. Crea un buscador en Google Programmable Search Engine.
+2. Configura los sitios que quieres consultar y copia el `Search Engine ID`.
+3. Crea una API key en Google Cloud con acceso a Custom Search JSON API.
+4. Añade `VITE_GOOGLE_SEARCH_API_KEY` y `VITE_GOOGLE_SEARCH_ENGINE_ID` en Vercel.
+
+La búsqueda se renderiza en una vista propia usando la API oficial. No se deben capturar sesiones, ocultar redirecciones ni intentar saltarse `X-Frame-Options` o CSP de Google.
+
 ## Integración OTT autorizada
 
 La carpeta `src/streaming/` contiene una capa separada para reproducción sincronizada de contenido propio o de un proveedor que entregue un SDK/API oficial:
