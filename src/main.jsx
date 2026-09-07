@@ -669,6 +669,7 @@ function RoomModal({
   const [copying, setCopying] = useState(false);
   const [contentUrl, setContentUrl] = useState(room.mediaUrl || "");
   const [googleSearchOpen, setGoogleSearchOpen] = useState(false);
+  const playerRef = useRef(null);
   const roomUrl = `${window.location.origin}/?room=${room.id}`;
   const userRoomName =
     user?.displayName || user?.email?.split("@")[0] || "tu sala";
@@ -692,13 +693,36 @@ function RoomModal({
     window.setTimeout(() => setCopying(false), 1600);
   };
   const changePlayback = async (playing) => {
-    if (db)
+    if (!db || !user) return;
+    try {
       await updateDoc(doc(db, "rooms", room.id), {
         playing,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
+    } catch {
+      notify("No se pudo actualizar la reproducción para la sala");
+    }
   };
+  const sendYouTubeCommand = (playing) => {
+    playerRef.current?.contentWindow?.postMessage(
+      JSON.stringify({
+        event: "command",
+        func: playing ? "playVideo" : "pauseVideo",
+        args: [],
+      }),
+      "*",
+    );
+  };
+  useEffect(() => {
+    const video = playerRef.current;
+    if (video instanceof HTMLVideoElement) {
+      const action = room.playing ? video.play() : video.pause();
+      if (action?.catch) action.catch(() => {});
+    } else {
+      sendYouTubeCommand(room.playing);
+    }
+  }, [room.playing, room.mediaUrl]);
   const selectPlatform = async (service) => {
     if (!db) return;
     const firstShow = shows.find((show) => show.service === service);
@@ -828,14 +852,17 @@ function RoomModal({
         <div className="room-player-frame">
           {getYouTubeEmbedUrl(room.mediaUrl) ? (
             <iframe
+              ref={playerRef}
               className="room-player-media"
-              src={getYouTubeEmbedUrl(room.mediaUrl)}
+              src={`${getYouTubeEmbedUrl(room.mediaUrl)}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
               title={displayTitle || "Contenido de la sala"}
               allow="autoplay; encrypted-media; picture-in-picture"
+              onLoad={() => sendYouTubeCommand(room.playing)}
               allowFullScreen
             />
           ) : room.mediaUrl && /\.(mp4|webm|ogg)(\?.*)?$/i.test(room.mediaUrl) ? (
             <video
+              ref={playerRef}
               className="room-player-media"
               src={room.mediaUrl}
               controls

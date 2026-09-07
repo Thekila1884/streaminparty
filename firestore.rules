@@ -43,8 +43,16 @@ service cloud.firestore {
       }
 
       match /calls/{callId} {
-        allow read, write: if isMember(roomId)
-          && (request.resource == null || request.resource.data.from == request.auth.uid || request.resource.data.to == request.auth.uid);
+        allow read: if isMember(roomId);
+        allow create: if isMember(roomId)
+          && request.resource.data.from == request.auth.uid;
+        allow update: if isMember(roomId)
+          && (resource.data.from == request.auth.uid
+            || resource.data.to == request.auth.uid
+            || request.resource.data.from == request.auth.uid
+            || request.resource.data.to == request.auth.uid);
+        allow delete: if isMember(roomId)
+          && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
       }
     }
   }
