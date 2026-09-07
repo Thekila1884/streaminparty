@@ -61,7 +61,11 @@ const services = [
   { name: "Max", color: "#9272ff", url: "https://www.max.com/" },
   { name: "Disney+", color: "#3c72ff", url: "https://www.disneyplus.com/" },
   { name: "Apple TV+", color: "#d7d7d7", url: "https://tv.apple.com/" },
-  { name: "Crunchyroll", color: "#f47521" },
+  {
+    name: "Crunchyroll",
+    color: "#f47521",
+    url: "https://www.crunchyroll.com/",
+  },
   { name: "Google", color: "#4285f4", google: true },
 ];
 const genres = [
@@ -675,10 +679,10 @@ function RoomModal({
     user?.displayName || user?.email?.split("@")[0] || "tu sala";
   const roomTitle = room.ownerName ? room.title : `Sala de ${userRoomName}`;
   const selectedService = room.service || "Netflix";
-  const serviceShows = shows.filter((show) => show.service === selectedService);
-  const selectedShow = shows.find(
-    (show) =>
-      show.title === room.currentTitle && show.service === selectedService,
+  const serviceShows = shows;
+  const selectedShow = shows.find((show) => show.title === room.currentTitle);
+  const selectedServiceInfo = services.find(
+    (service) => service.name === selectedService,
   );
   const displayShow = selectedShow || serviceShows[0];
   const displayTitle =
@@ -725,10 +729,9 @@ function RoomModal({
   }, [room.playing, room.mediaUrl]);
   const selectPlatform = async (service) => {
     if (!db) return;
-    const firstShow = shows.find((show) => show.service === service);
     await updateDoc(doc(db, "rooms", room.id), {
       service,
-      currentTitle: firstShow?.title || "Selecciona un título",
+      currentTitle: room.currentTitle || "",
       updatedAt: serverTimestamp(),
       updatedBy: user.uid,
     });
@@ -805,8 +808,28 @@ function RoomModal({
                 </button>
               ))}
           </div>
+          {selectedServiceInfo?.url && (
+            <div className="service-access-panel">
+              <div>
+                <strong>{selectedService}</strong>
+                <small>
+                  Inicia sesión en el sitio oficial y elige allí el contenido
+                  que tienes autorizado para ver.
+                </small>
+              </div>
+              <a
+                href={selectedServiceInfo.url}
+                target="_blank"
+                rel="noreferrer"
+                className="service-access-link"
+              >
+                Abrir {selectedService}
+              </a>
+            </div>
+          )}
           {serviceShows.length > 0 && (
             <div className="room-title-picker">
+              <div className="room-section-label">ELIGE EL TÍTULO DE LA SALA</div>
               {serviceShows.map((show) => (
                 <button
                   key={show.title}
@@ -815,7 +838,9 @@ function RoomModal({
                       ? "room-title active"
                       : "room-title"
                   }
-                  onClick={() => onSelectShow(show)}
+                  onClick={() =>
+                    onSelectShow({ ...show, service: selectedService })
+                  }
                 >
                   {show.title}
                 </button>

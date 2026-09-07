@@ -1489,6 +1489,41 @@ button {
   color: var(--lime);
   border-color: var(--lime);
 }
+.service-access-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  background: #101216;
+}
+.service-access-panel > div {
+  display: grid;
+  gap: 4px;
+}
+.service-access-panel strong {
+  font-size: 11px;
+}
+.service-access-panel small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.service-access-link {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  color: #101216;
+  background: var(--lime);
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.room-title-picker .room-section-label {
+  width: 100%;
+  margin-bottom: 2px;
+}
 .room-player-frame {
   position: relative;
   overflow: hidden;
