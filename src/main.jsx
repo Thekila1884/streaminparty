@@ -981,9 +981,7 @@ function App() {
         ? history
         : shows.filter(
             (show) =>
-              (activeService === "Todos" ||
-                show.service === activeService ||
-                show.service === "Catálogo") &&
+              (activeService === "Todos" || show.service === activeService) &&
               (activeGenre === "Todos" || show.genre === activeGenre) &&
               show.title.toLowerCase().includes(query.toLowerCase()),
           );
@@ -1198,7 +1196,11 @@ function App() {
             <div className="section-heading">
               <div>
                 <p className="eyebrow">EXPLORA POR SERVICIO</p>
-                <h2>Todo tu streaming, en un solo lugar</h2>
+                <h2>
+                  {activeService === "Todos"
+                    ? "Todo tu streaming, en un solo lugar"
+                    : `Catálogo de ${activeService}`}
+                </h2>
               </div>
               <button
                 className="filter-button"
@@ -1221,13 +1223,8 @@ function App() {
                   onClick={() =>
                     service.google
                       ? setGoogleOpen(true)
-                      : service.url
-                        ? window.open(
-                            service.url,
-                            "_blank",
-                            "noopener,noreferrer",
-                          )
-                        : setActiveService(service.name)
+                      : (setActiveService(service.name),
+                        setActiveTab("Explorar"))
                   }
                 >
                   <span
