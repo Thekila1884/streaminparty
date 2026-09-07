@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Bell,
@@ -61,6 +61,7 @@ const services = [
   { name: "Max", color: "#9272ff", url: "https://www.max.com/" },
   { name: "Disney+", color: "#3c72ff", url: "https://www.disneyplus.com/" },
   { name: "Apple TV+", color: "#d7d7d7", url: "https://tv.apple.com/" },
+  { name: "Google", color: "#4285f4", google: true },
 ];
 const genres = [
   "Todos",
@@ -786,6 +787,56 @@ function HelpModal({ onClose }) {
   );
 }
 
+function GoogleSearchModal({ onClose }) {
+  const searchContainer = useRef(null);
+
+  useEffect(() => {
+    const renderSearch = () => {
+      if (window.google?.search?.cse?.element && searchContainer.current) {
+        searchContainer.current.innerHTML = "";
+        window.google.search.cse.element.render({
+          div: searchContainer.current,
+          tag: "search",
+        });
+      }
+    };
+    const existingScript = document.querySelector(
+      'script[data-streamin-google-cse="true"]',
+    );
+    if (existingScript) {
+      renderSearch();
+      return undefined;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cse.google.com/cse.js?cx=e4507537a2d404791";
+    script.async = true;
+    script.dataset.streaminGoogleCse = "true";
+    script.onload = renderSearch;
+    document.head.appendChild(script);
+    return undefined;
+  }, []);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="room-modal google-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="close-button" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className="room-icon">
+          <Search size={22} />
+        </div>
+        <p className="eyebrow">BÚSQUEDA GOOGLE</p>
+        <h2>Busca dentro de Streaminparty</h2>
+        <p>Resultados proporcionados por Google Programmable Search.</p>
+        <div ref={searchContainer} className="gcse-search" />
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [activeService, setActiveService] = useState("Todos");
@@ -796,6 +847,7 @@ function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [googleOpen, setGoogleOpen] = useState(false);
   const [liked, setLiked] = useState(() =>
     storedArray("streaminparty-favorites"),
   );
@@ -1167,13 +1219,15 @@ function App() {
                       : "service-tab"
                   }
                   onClick={() =>
-                    service.url
-                      ? window.open(
-                          service.url,
-                          "_blank",
-                          "noopener,noreferrer",
-                        )
-                      : setActiveService(service.name)
+                    service.google
+                      ? setGoogleOpen(true)
+                      : service.url
+                        ? window.open(
+                            service.url,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        : setActiveService(service.name)
                   }
                 >
                   <span
@@ -1277,6 +1331,7 @@ function App() {
         />
       )}
       {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+      {googleOpen && <GoogleSearchModal onClose={() => setGoogleOpen(false)} />}
       {toast && (
         <div className="toast">
           <Info size={16} /> {toast}
