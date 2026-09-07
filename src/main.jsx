@@ -76,6 +76,158 @@ function initials(user) {
   return (user?.displayName || user?.email || "JD").slice(0, 2).toUpperCase();
 }
 
+async function hashRoomPassword(password) {
+  const data = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+function CreateRoomModal({ onClose, onCreate }) {
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="room-modal room-form-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="close-button" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className="room-icon">
+          <Plus size={22} />
+        </div>
+        <p className="eyebrow">NUEVA SALA</p>
+        <h2>Crea tu sala</h2>
+        <p>Comparte el enlace con tus amigos. La contraseña es opcional.</p>
+        <input
+          className="auth-input"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Nombre de la sala"
+        />
+        <input
+          className="auth-input"
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="Contraseña opcional"
+          minLength="4"
+        />
+        <button
+          className="primary-button full"
+          onClick={() => onCreate(name, password)}
+        >
+          Crear sala
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoomAccessModal({ room, onClose, onJoin }) {
+  const [password, setPassword] = useState("");
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="room-modal room-form-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="close-button" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className="room-icon">
+          <Users size={22} />
+        </div>
+        <p className="eyebrow">SALA PROTEGIDA</p>
+        <h2>{room.title}</h2>
+        <p>
+          Introduce la contraseña para entrar y comenzar la reproducción
+          sincronizada.
+        </p>
+        <input
+          className="auth-input"
+          autoFocus
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="Contraseña de la sala"
+        />
+        <button
+          className="primary-button full"
+          onClick={() => onJoin(password)}
+        >
+          Entrar a la sala
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoomsDirectoryModal({
+  rooms,
+  queryText,
+  onQueryChange,
+  onJoin,
+  onClose,
+}) {
+  const visibleRooms = rooms.filter((room) =>
+    `${room.title} ${room.ownerName}`
+      .toLowerCase()
+      .includes(queryText.toLowerCase()),
+  );
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="room-modal rooms-directory"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="close-button" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className="room-icon">
+          <Users size={22} />
+        </div>
+        <p className="eyebrow">SALAS ACTIVAS</p>
+        <h2>Encuentra una sala</h2>
+        <input
+          className="auth-input"
+          value={queryText}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Buscar por nombre o anfitrión"
+        />
+        <div className="rooms-list">
+          {visibleRooms.length === 0 ? (
+            <p className="chat-empty">No hay salas activas con esa búsqueda.</p>
+          ) : (
+            visibleRooms.map((room) => (
+              <button
+                className="room-list-item"
+                key={room.id}
+                onClick={() => onJoin(room)}
+              >
+                <span className="room-list-icon">
+                  <Users size={16} />
+                </span>
+                <span>
+                  <strong>{room.title}</strong>
+                  <small>
+                    {room.ownerName} ·{" "}
+                    {room.passwordProtected ? "Con contraseña" : "Acceso libre"}
+                  </small>
+                </span>
+                <span className="live-dot" />
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RoomChat({ roomId, user, notify }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -970,6 +1122,12 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [googleOpen, setGoogleOpen] = useState(false);
+  const [createRoomOpen, setCreateRoomOpen] = useState(false);
+  const [roomsDirectoryOpen, setRoomsDirectoryOpen] = useState(false);
+  const [roomSearch, setRoomSearch] = useState("");
+  const [activeRooms, setActiveRooms] = useState([]);
+  const [pendingRoom, setPendingRoom] = useState(null);
+  const [verifiedRooms, setVerifiedRooms] = useState([]);
   const [liked, setLiked] = useState(() =>
     storedArray("streaminparty-favorites"),
   );
@@ -1039,18 +1197,75 @@ function App() {
     return onAuthStateChanged(auth, setUser);
   }, []);
   useEffect(() => {
+    if (!db || !user) return undefined;
+    return onSnapshot(
+      query(collection(db, "publicRooms"), orderBy("updatedAt", "desc")),
+      (snapshot) => {
+        setActiveRooms(
+          snapshot.docs.map((item) => ({ id: item.id, ...item.data() })),
+        );
+      },
+      () => notify("No se pudieron cargar las salas activas"),
+    );
+  }, [user]);
+  const joinRoom = async (targetRoom, password = "") => {
+    if (!user) return setAuthOpen(true);
+    if (!db) return notify("Configura Firebase para entrar a salas");
+    try {
+      if (targetRoom.passwordProtected) {
+        const passwordHash = await hashRoomPassword(password);
+        if (passwordHash !== targetRoom.passwordHash)
+          return notify("Contraseña incorrecta");
+        setVerifiedRooms((current) =>
+          current.includes(targetRoom.id)
+            ? current
+            : [...current, targetRoom.id],
+        );
+      }
+      await setDoc(
+        doc(db, "rooms", targetRoom.id, "members", user.uid),
+        {
+          displayName: user.displayName || user.email,
+          joinedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      setRoomId(targetRoom.id);
+      setRoom({
+        id: targetRoom.id,
+        ...targetRoom,
+        isPlaying: true,
+        playing: true,
+      });
+      setRoomOpen(true);
+      setRoomsDirectoryOpen(false);
+      setPendingRoom(null);
+      await updateDoc(doc(db, "rooms", targetRoom.id), {
+        playing: true,
+        isPlaying: true,
+        updatedBy: user.uid,
+        updatedAt: serverTimestamp(),
+      }).catch(() => {});
+    } catch {
+      notify("No se pudo entrar a la sala");
+    }
+  };
+  useEffect(() => {
     if (!user || !db || !roomId) return undefined;
     let unsubscribe = () => {};
     const joinAndListen = async () => {
       try {
-        await setDoc(
-          doc(db, "rooms", roomId, "members", user.uid),
-          {
-            displayName: user.displayName || user.email,
-            joinedAt: serverTimestamp(),
-          },
-          { merge: true },
+        const publicSnapshot = await new Promise((resolve, reject) =>
+          onSnapshot(doc(db, "publicRooms", roomId), resolve, reject),
         );
+        const publicRoom = publicSnapshot.exists()
+          ? { id: publicSnapshot.id, ...publicSnapshot.data() }
+          : { id: roomId, title: "Sala compartida" };
+        if (publicRoom.passwordProtected && !verifiedRooms.includes(roomId)) {
+          setPendingRoom(publicRoom);
+          return;
+        }
+        await joinRoom(publicRoom);
         unsubscribe = onSnapshot(
           doc(db, "rooms", roomId),
           (snapshot) => {
@@ -1067,7 +1282,7 @@ function App() {
     };
     joinAndListen();
     return () => unsubscribe();
-  }, [user, roomId]);
+  }, [user, roomId, verifiedRooms]);
   useEffect(() => {
     if (roomId && !user) notify("Inicia sesión para unirte a la sala");
   }, [roomId, user]);
@@ -1117,7 +1332,7 @@ function App() {
         ? current.filter((item) => item !== title)
         : [...current, title],
     );
-  const createRoom = async () => {
+  const createRoom = async (roomName = "", password = "") => {
     if (!user) return setAuthOpen(true);
     if (!db) return notify("Configura Firebase para crear salas");
     const newRoomId =
@@ -1127,23 +1342,44 @@ function App() {
       id: newRoomId,
       ownerId: user.uid,
       ownerName: user.displayName || user.email?.split("@")[0] || "Usuario",
-      title: `Sala de ${user.displayName || user.email?.split("@")[0] || "tu sala"}`,
+      title:
+        roomName.trim() ||
+        `Sala de ${user.displayName || user.email?.split("@")[0] || "tu sala"}`,
       service: "Netflix",
       currentTitle: "",
       playing: false,
+      isPlaying: false,
+      passwordProtected: Boolean(password.trim()),
     };
     try {
+      const passwordHash = password.trim()
+        ? await hashRoomPassword(password.trim())
+        : "";
       await setDoc(doc(db, "rooms", newRoomId), {
         ...newRoom,
+        passwordHash,
         updatedAt: serverTimestamp(),
       });
       await setDoc(doc(db, "rooms", newRoomId, "members", user.uid), {
         displayName: user.displayName || user.email,
         joinedAt: serverTimestamp(),
       });
+      await setDoc(doc(db, "publicRooms", newRoomId), {
+        id: newRoomId,
+        ownerId: user.uid,
+        ownerName: newRoom.ownerName,
+        title: newRoom.title,
+        service: newRoom.service,
+        currentTitle: "",
+        playing: false,
+        passwordProtected: newRoom.passwordProtected,
+        passwordHash,
+        updatedAt: serverTimestamp(),
+      });
       setRoom(newRoom);
       setRoomId(newRoomId);
       setRoomOpen(true);
+      setCreateRoomOpen(false);
     } catch (error) {
       const reason =
         error?.code === "permission-denied"
@@ -1229,9 +1465,22 @@ function App() {
             Sala compartida
             <span className="live-dot" />
           </button>
-          <button className="nav-item" onClick={createRoom}>
+          <button
+            className="nav-item"
+            onClick={() => (user ? setCreateRoomOpen(true) : setAuthOpen(true))}
+          >
             <Plus size={18} />
             Crear una sala
+          </button>
+          <button
+            className="nav-item"
+            onClick={() =>
+              user ? setRoomsDirectoryOpen(true) : setAuthOpen(true)
+            }
+          >
+            <Search size={18} />
+            Buscar salas
+            {activeRooms.length > 0 && <small>{activeRooms.length}</small>}
           </button>
         </nav>
         <div className="sidebar-bottom">
@@ -1472,6 +1721,32 @@ function App() {
           onSelectShow={selectShow}
           onClose={() => setRoomOpen(false)}
           notify={notify}
+        />
+      )}
+      {createRoomOpen && (
+        <CreateRoomModal
+          onClose={() => setCreateRoomOpen(false)}
+          onCreate={createRoom}
+        />
+      )}
+      {roomsDirectoryOpen && (
+        <RoomsDirectoryModal
+          rooms={activeRooms}
+          queryText={roomSearch}
+          onQueryChange={setRoomSearch}
+          onJoin={(targetRoom) =>
+            targetRoom.passwordProtected
+              ? setPendingRoom(targetRoom)
+              : joinRoom(targetRoom)
+          }
+          onClose={() => setRoomsDirectoryOpen(false)}
+        />
+      )}
+      {pendingRoom && (
+        <RoomAccessModal
+          room={pendingRoom}
+          onClose={() => setPendingRoom(null)}
+          onJoin={(password) => joinRoom(pendingRoom, password)}
         />
       )}
       {authOpen && (

@@ -68,6 +68,9 @@ flowchart LR
 - Búsqueda de películas y series.
 - Lista personal con favoritos.
 - Sala compartida con enlace de invitación.
+- Directorio de salas activas con búsqueda por nombre o anfitrión.
+- Salas con contraseña opcional y acceso protegido desde enlace.
+- Los enlaces de sala unen al participante y comienzan el estado de reproducción sincronizado.
 - Autenticación real con correo y contraseña mediante Firebase Auth.
 - Estado de reproducción sincronizado en tiempo real mediante Firestore.
 - Chat en tiempo real por sala con fotos y videos de hasta 50 MB mediante Storage.
@@ -81,3 +84,4 @@ flowchart LR
 - Output directory: `dist`
 - Deploy: conecta el repositorio de GitHub y activa Deploy on push.
 - Añade las variables de `.env.example` en Project Settings > Environment Variables.
+- Publica las reglas de salas después de cualquier cambio con `firebase deploy --only firestore:rules`.
