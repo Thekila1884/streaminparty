@@ -17,6 +17,10 @@ button, input { font: inherit; } button { border: 0; cursor: pointer; color: inh
 @media (max-width: 390px) { .show-grid { grid-template-columns: 1fr 1fr; }.poster-wrap { height: 180px; }.hero-copy h1 { font-size: 40px; }.service-tabs { gap: 6px; }.service-tab { padding: 8px 10px; } }
 .auth-input { width: 100%; border: 1px solid var(--line); background: #101216; color: var(--cream); padding: 12px; margin: 6px 0; outline: none; font-size: 12px; }
 .auth-input:focus { border-color: var(--lime); }
+.google-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; background: #f7f7f5; color: #1f2024; padding: 12px; font-size: 12px; font-weight: 600; }
+.google-button:hover { background: #ffffff; }
+.google-mark { color: #4285f4; font-family: Arial, sans-serif; font-size: 17px; font-weight: 700; }
+.auth-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 10px; margin: 18px 0 10px; }.auth-divider:before, .auth-divider:after { content: ''; height: 1px; background: var(--line); flex: 1; }
 .auth-error { color: var(--coral) !important; font-size: 11px !important; }
 .switch-auth { background: none; color: var(--lime); font-size: 11px; margin: 18px auto 0; display: block; }
 .room-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; padding: 12px; background: #101216; border: 1px solid var(--line); }

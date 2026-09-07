@@ -13,10 +13,11 @@ Abre la URL que muestre Vite en el navegador.
 
 ## Configuración de Firebase
 
-1. Crea un proyecto en Firebase y habilita Authentication > Email/Password.
+1. Crea un proyecto en Firebase y habilita Authentication > Email/Password y Authentication > Google.
 2. Crea Firestore en producción y publica las reglas con `firebase deploy --only firestore:rules`.
 3. Registra una Web App en Firebase y copia sus valores a un archivo `.env.local` usando `.env.example`.
 4. En Vercel, añade las mismas variables `VITE_FIREBASE_*` para Production, Preview y Development.
+5. En Firebase Authentication > Settings > Authorized domains, añade el dominio de Vercel y tu dominio personalizado.
 
 El archivo `.env.local` nunca debe subirse a GitHub. Las reglas restringen las salas y perfiles a usuarios autenticados; un enlace compartido permite unirse a esa sala concreta.
 
