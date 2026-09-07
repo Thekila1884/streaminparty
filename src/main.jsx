@@ -54,6 +54,8 @@ import {
 import { auth, db, firebaseReady, storage } from "./firebase";
 import "./styles.css";
 
+const NOOP = () => {};
+
 const services = [
   { name: "Todos", color: "#f1f1ed" },
   { name: "Netflix", color: "#e50914", url: "https://www.netflix.com/" },
@@ -84,7 +86,7 @@ async function hashRoomPassword(password) {
   ).join("");
 }
 
-function CreateRoomModal({ onClose, onCreate = () => {} }) {
+function CreateRoomModal({ onClose = NOOP, onCreate = NOOP }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   return (
@@ -127,7 +129,7 @@ function CreateRoomModal({ onClose, onCreate = () => {} }) {
   );
 }
 
-function RoomAccessModal({ room, onClose, onJoin = () => {} }) {
+function RoomAccessModal({ room, onClose = NOOP, onJoin = NOOP }) {
   const [password, setPassword] = useState("");
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -169,9 +171,9 @@ function RoomAccessModal({ room, onClose, onJoin = () => {} }) {
 function RoomsDirectoryModal({
   rooms,
   queryText,
-  onQueryChange = () => {},
-  onJoin = () => {},
-  onClose,
+  onQueryChange = NOOP,
+  onJoin = NOOP,
+  onClose = NOOP,
 }) {
   const visibleRooms = rooms.filter((room) =>
     `${room.title} ${room.ownerName}`
@@ -228,7 +230,7 @@ function RoomsDirectoryModal({
   );
 }
 
-function RoomChat({ roomId, user, notify }) {
+function RoomChat({ roomId, user, notify = NOOP }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -375,7 +377,7 @@ function storedArray(key) {
   }
 }
 
-function RoomCall({ roomId, user, notify }) {
+function RoomCall({ roomId, user, notify = NOOP }) {
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
   const peerRef = useRef(null);
@@ -588,7 +590,7 @@ function RoomCall({ roomId, user, notify }) {
   );
 }
 
-function AuthModal({ onClose, notify }) {
+function AuthModal({ onClose = NOOP, notify = NOOP }) {
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -689,9 +691,9 @@ function RoomModal({
   room,
   user,
   shows,
-  onSelectShow = () => {},
-  onClose,
-  notify,
+  onSelectShow = NOOP,
+  onClose = NOOP,
+  notify = NOOP,
 }) {
   const [copying, setCopying] = useState(false);
   const [contentUrl, setContentUrl] = useState(room.mediaUrl || "");
@@ -915,10 +917,10 @@ function RoomModal({
 function SettingsModal({
   user,
   preferences,
-  onPreferencesChange,
-  onClose,
-  onClearData,
-  notify,
+  onPreferencesChange = NOOP,
+  onClose = NOOP,
+  onClearData = NOOP,
+  notify = NOOP,
 }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -991,7 +993,7 @@ function SettingsModal({
   );
 }
 
-function HelpModal({ onClose }) {
+function HelpModal({ onClose = NOOP }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
@@ -1041,7 +1043,7 @@ function HelpModal({ onClose }) {
   );
 }
 
-function GoogleSearchModal({ onClose, onSelectResult = () => {} }) {
+function GoogleSearchModal({ onClose = NOOP, onSelectResult = NOOP }) {
   const searchContainer = useRef(null);
 
   useEffect(() => {
