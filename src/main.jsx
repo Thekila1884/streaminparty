@@ -595,9 +595,12 @@ function AuthModal({ onClose, notify }) {
   );
 }
 
-function RoomModal({ room, user, onClose, notify }) {
+function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
   const [copying, setCopying] = useState(false);
   const roomUrl = `${window.location.origin}/?room=${room.id}`;
+  const selectedService = room.service || "Netflix";
+  const selectedShow = shows.find((show) => show.title === room.currentTitle);
+  const serviceShows = shows.filter((show) => show.service === selectedService);
   const copyLink = async () => {
     await navigator.clipboard?.writeText(roomUrl);
     setCopying(true);
@@ -611,6 +614,16 @@ function RoomModal({ room, user, onClose, notify }) {
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
+  };
+  const selectPlatform = async (service) => {
+    if (!db) return;
+    const firstShow = shows.find((show) => show.service === service);
+    await updateDoc(doc(db, "rooms", room.id), {
+      service,
+      currentTitle: firstShow?.title || "Selecciona un título",
+      updatedAt: serverTimestamp(),
+      updatedBy: user.uid,
+    });
   };
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -631,6 +644,65 @@ function RoomModal({ room, user, onClose, notify }) {
           <button onClick={copyLink}>
             <Copy size={15} /> {copying ? "Copiado" : "Copiar"}
           </button>
+        </div>
+        <div className="room-platform-picker">
+          <div className="room-section-label">PLATAFORMA DE LA SALA</div>
+          <div className="room-platforms">
+            {services
+              .filter((service) => service.name !== "Todos" && !service.google)
+              .map((service) => (
+                <button
+                  key={service.name}
+                  className={
+                    selectedService === service.name
+                      ? "room-platform active"
+                      : "room-platform"
+                  }
+                  onClick={() => selectPlatform(service.name)}
+                >
+                  <span
+                    className="service-dot"
+                    style={{ background: service.color }}
+                  />
+                  {service.name}
+                </button>
+              ))}
+          </div>
+          {serviceShows.length > 0 && (
+            <div className="room-title-picker">
+              {serviceShows.map((show) => (
+                <button
+                  key={show.title}
+                  className={
+                    room.currentTitle === show.title
+                      ? "room-title active"
+                      : "room-title"
+                  }
+                  onClick={() => onSelectShow(show)}
+                >
+                  {show.title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="room-player-frame">
+          {selectedShow ? (
+            <img src={selectedShow.image} alt={selectedShow.title} />
+          ) : (
+            <div className="room-player-placeholder">
+              <Play size={28} />
+              <span>Selecciona un título para comenzar</span>
+            </div>
+          )}
+          <div className="room-player-overlay">
+            <span className="room-player-badge">
+              <span className={room.playing ? "live-dot" : "paused-dot"} />{" "}
+              {room.playing ? "EN REPRODUCCIÓN" : "EN PAUSA"}
+            </span>
+            <strong>{room.currentTitle || "Sin título"}</strong>
+            <small>{selectedService} · sincronizado para la sala</small>
+          </div>
         </div>
         <div className="room-state">
           <span className={room.playing ? "live-dot" : "paused-dot"} />
@@ -994,7 +1066,9 @@ function App() {
   const createRoom = async () => {
     if (!user) return setAuthOpen(true);
     if (!db) return notify("Configura Firebase para crear salas");
-    const newRoomId = globalThis.crypto?.randomUUID?.() || `room-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const newRoomId =
+      globalThis.crypto?.randomUUID?.() ||
+      `room-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const newRoom = {
       id: newRoomId,
       ownerId: user.uid,
@@ -1015,11 +1089,12 @@ function App() {
       setRoomId(newRoomId);
       setRoomOpen(true);
     } catch (error) {
-      const reason = error?.code === "permission-denied"
-        ? "Firebase rechazó la sala: publica firestore.rules y verifica que tu usuario esté autenticado."
-        : error?.code === "unavailable"
-          ? "Firebase no está disponible. Permite firestore.googleapis.com en tu navegador o red."
-          : "No se pudo crear la sala. Revisa la configuración de Firebase.";
+      const reason =
+        error?.code === "permission-denied"
+          ? "Firebase rechazó la sala: publica firestore.rules y verifica que tu usuario esté autenticado."
+          : error?.code === "unavailable"
+            ? "Firebase no está disponible. Permite firestore.googleapis.com en tu navegador o red."
+            : "No se pudo crear la sala. Revisa la configuración de Firebase.";
       notify(reason);
     }
   };
@@ -1324,6 +1399,8 @@ function App() {
         <RoomModal
           room={room}
           user={user}
+          shows={shows}
+          onSelectShow={selectShow}
           onClose={() => setRoomOpen(false)}
           notify={notify}
         />
