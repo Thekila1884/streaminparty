@@ -1503,6 +1503,24 @@ button {
   object-fit: cover;
   opacity: 0.72;
 }
+.room-player-media {
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  display: block;
+  border: 0;
+  object-fit: contain;
+  background: #08090b;
+}
+.room-player-frame:has(.room-player-media) .room-player-overlay {
+  pointer-events: none;
+}
+.room-content-source {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .room-player-overlay {
   position: absolute;
   inset: 0;

@@ -84,6 +84,22 @@ async function hashRoomPassword(password) {
   ).join("");
 }
 
+function getYouTubeEmbedUrl(value) {
+  if (!value) return "";
+  try {
+    const parsedUrl = new URL(value);
+    let videoId = parsedUrl.searchParams.get("v");
+    if (parsedUrl.hostname === "youtu.be") videoId = parsedUrl.pathname.slice(1);
+    if (parsedUrl.pathname.startsWith("/shorts/"))
+      videoId = parsedUrl.pathname.split("/")[2];
+    return videoId
+      ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0`
+      : "";
+  } catch {
+    return "";
+  }
+}
+
 function CreateRoomModal({ onClose = NOOP, onCreate = NOOP }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -713,7 +729,7 @@ function RoomModal({
         throw new Error("protocol");
       await updateDoc(doc(db, "rooms", room.id), {
         mediaUrl: parsedUrl.toString(),
-        currentTitle: parsedUrl.hostname,
+        currentTitle: room.currentTitle || parsedUrl.hostname,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
@@ -723,7 +739,7 @@ function RoomModal({
     }
   };
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       <div className="room-modal" onClick={(event) => event.stopPropagation()}>
         <button className="close-button" onClick={onClose}>
           <X size={18} />
@@ -810,7 +826,23 @@ function RoomModal({
           </small>
         </form>
         <div className="room-player-frame">
-          {displayShow ? (
+          {getYouTubeEmbedUrl(room.mediaUrl) ? (
+            <iframe
+              className="room-player-media"
+              src={getYouTubeEmbedUrl(room.mediaUrl)}
+              title={displayTitle || "Contenido de la sala"}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          ) : room.mediaUrl && /\.(mp4|webm|ogg)(\?.*)?$/i.test(room.mediaUrl) ? (
+            <video
+              className="room-player-media"
+              src={room.mediaUrl}
+              controls
+              playsInline
+              poster={displayShow?.image}
+            />
+          ) : displayShow ? (
             <img src={displayShow.image} alt={displayShow.title} />
           ) : (
             <div className="room-player-placeholder">
@@ -826,14 +858,9 @@ function RoomModal({
             <strong>{displayTitle || "Sin título seleccionado"}</strong>
             <small>{selectedService} · sincronizado para la sala</small>
             {room.mediaUrl && (
-              <a
-                className="room-content-link"
-                href={room.mediaUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Abrir contenido autorizado
-              </a>
+              <small className="room-content-source">
+                Contenido: {room.mediaUrl}
+              </small>
             )}
           </div>
         </div>
