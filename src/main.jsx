@@ -292,40 +292,133 @@ function RoomModal({ room, user, onClose, notify }) {
   );
 }
 
-function SettingsModal({ user, preferences, onPreferencesChange, onClose, onClearData, notify }) {
+function SettingsModal({
+  user,
+  preferences,
+  onPreferencesChange,
+  onClose,
+  onClearData,
+  notify,
+}) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="room-modal settings-modal" onClick={(event) => event.stopPropagation()}>
-        <button className="close-button" onClick={onClose}><X size={18} /></button>
-        <div className="room-icon"><Settings size={22} /></div>
+      <div
+        className="room-modal settings-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="close-button" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className="room-icon">
+          <Settings size={22} />
+        </div>
         <p className="eyebrow">PREFERENCIAS</p>
         <h2>Configuración</h2>
         <p>Gestiona tu experiencia en Streaminparty desde este dispositivo.</p>
-        <div className="settings-user"><div className="avatar">{initials(user)}</div><div><strong>{user?.email || 'Modo demo'}</strong><span>{user ? 'Cuenta sincronizada' : 'Preferencias locales'}</span></div></div>
-        <label className="settings-option"><span><strong>Notificaciones</strong><small>Recibir avisos de actividad en salas</small></span><input type="checkbox" checked={preferences.notifications} onChange={(event) => onPreferencesChange({ ...preferences, notifications: event.target.checked })} /></label>
-        <label className="settings-option"><span><strong>Reducir movimiento</strong><small>Limitar animaciones de la interfaz</small></span><input type="checkbox" checked={preferences.reducedMotion} onChange={(event) => onPreferencesChange({ ...preferences, reducedMotion: event.target.checked })} /></label>
-        <button className="danger-button" onClick={() => { onClearData(); notify('Datos locales eliminados') }}>Limpiar favoritos e historial local</button>
-        <button className="primary-button full" onClick={onClose}>Guardar preferencias</button>
+        <div className="settings-user">
+          <div className="avatar">{initials(user)}</div>
+          <div>
+            <strong>{user?.email || "Modo demo"}</strong>
+            <span>{user ? "Cuenta sincronizada" : "Preferencias locales"}</span>
+          </div>
+        </div>
+        <label className="settings-option">
+          <span>
+            <strong>Notificaciones</strong>
+            <small>Recibir avisos de actividad en salas</small>
+          </span>
+          <input
+            type="checkbox"
+            checked={preferences.notifications}
+            onChange={(event) =>
+              onPreferencesChange({
+                ...preferences,
+                notifications: event.target.checked,
+              })
+            }
+          />
+        </label>
+        <label className="settings-option">
+          <span>
+            <strong>Reducir movimiento</strong>
+            <small>Limitar animaciones de la interfaz</small>
+          </span>
+          <input
+            type="checkbox"
+            checked={preferences.reducedMotion}
+            onChange={(event) =>
+              onPreferencesChange({
+                ...preferences,
+                reducedMotion: event.target.checked,
+              })
+            }
+          />
+        </label>
+        <button
+          className="danger-button"
+          onClick={() => {
+            onClearData();
+            notify("Datos locales eliminados");
+          }}
+        >
+          Limpiar favoritos e historial local
+        </button>
+        <button className="primary-button full" onClick={onClose}>
+          Guardar preferencias
+        </button>
       </div>
     </div>
-  )
+  );
 }
 
 function HelpModal({ onClose }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="room-modal help-modal" onClick={(event) => event.stopPropagation()}>
-        <button className="close-button" onClick={onClose}><X size={18} /></button>
-        <div className="room-icon"><CircleHelp size={22} /></div>
+      <div
+        className="room-modal help-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="close-button" onClick={onClose}>
+          <X size={18} />
+        </button>
+        <div className="room-icon">
+          <CircleHelp size={22} />
+        </div>
         <p className="eyebrow">CENTRO DE AYUDA</p>
         <h2>¿En qué podemos ayudarte?</h2>
-        <p>Consulta las respuestas rápidas o contacta con el equipo para resolver un problema.</p>
-        <a className="help-link" href="https://github.com/Thekila1884/streaminparty/issues" target="_blank" rel="noreferrer"><span><strong>Reportar un problema</strong><small>Abre un ticket en GitHub</small></span><Link2 size={16} /></a>
-        <a className="help-link" href="mailto:soporte@streaminparty.com"><span><strong>Contactar soporte</strong><small>soporte@streaminparty.com</small></span><Link2 size={16} /></a>
-        <div className="help-note"><Info size={15} /><span>Para unirte a una sala, inicia sesión y abre el enlace de invitación que te compartió tu anfitrión.</span></div>
+        <p>
+          Consulta las respuestas rápidas o contacta con el equipo para resolver
+          un problema.
+        </p>
+        <a
+          className="help-link"
+          href="https://github.com/Thekila1884/streaminparty/issues"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span>
+            <strong>Reportar un problema</strong>
+            <small>Abre un ticket en GitHub</small>
+          </span>
+          <Link2 size={16} />
+        </a>
+        <a className="help-link" href="mailto:soporte@streaminparty.com">
+          <span>
+            <strong>Contactar soporte</strong>
+            <small>soporte@streaminparty.com</small>
+          </span>
+          <Link2 size={16} />
+        </a>
+        <div className="help-note">
+          <Info size={15} />
+          <span>
+            Para unirte a una sala, inicia sesión y abre el enlace de invitación
+            que te compartió tu anfitrión.
+          </span>
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
 function App() {
@@ -338,8 +431,12 @@ function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [liked, setLiked] = useState(() => storedArray("streaminparty-favorites"));
-  const [history, setHistory] = useState(() => storedArray("streaminparty-history"));
+  const [liked, setLiked] = useState(() =>
+    storedArray("streaminparty-favorites"),
+  );
+  const [history, setHistory] = useState(() =>
+    storedArray("streaminparty-history"),
+  );
   const [room, setRoom] = useState(null);
   const [roomId, setRoomId] = useState(() =>
     new URLSearchParams(window.location.search).get("room"),
@@ -347,15 +444,38 @@ function App() {
   const [toast, setToast] = useState("");
   const [shows, setShows] = useState(fallbackShows);
   const [preferences, setPreferences] = useState(() => {
-    try { return { notifications: true, reducedMotion: false, ...JSON.parse(localStorage.getItem("streaminparty-preferences") || "{}") }; } catch { return { notifications: true, reducedMotion: false }; }
+    try {
+      return {
+        notifications: true,
+        reducedMotion: false,
+        ...JSON.parse(
+          localStorage.getItem("streaminparty-preferences") || "{}",
+        ),
+      };
+    } catch {
+      return { notifications: true, reducedMotion: false };
+    }
   });
   const notify = (message) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2600);
   };
-  useEffect(() => { localStorage.setItem("streaminparty-preferences", JSON.stringify(preferences)); document.documentElement.classList.toggle("reduced-motion", preferences.reducedMotion); }, [preferences]);
-  useEffect(() => { localStorage.setItem("streaminparty-favorites", JSON.stringify(liked)); }, [liked]);
-  useEffect(() => { localStorage.setItem("streaminparty-history", JSON.stringify(history)); }, [history]);
+  useEffect(() => {
+    localStorage.setItem(
+      "streaminparty-preferences",
+      JSON.stringify(preferences),
+    );
+    document.documentElement.classList.toggle(
+      "reduced-motion",
+      preferences.reducedMotion,
+    );
+  }, [preferences]);
+  useEffect(() => {
+    localStorage.setItem("streaminparty-favorites", JSON.stringify(liked));
+  }, [liked]);
+  useEffect(() => {
+    localStorage.setItem("streaminparty-history", JSON.stringify(history));
+  }, [history]);
   useEffect(() => {
     if (!auth) return undefined;
     return onAuthStateChanged(auth, setUser);
@@ -403,22 +523,17 @@ function App() {
       .then((data) => {
         if (!data?.results) return;
         setShows(
-          data.results
-            .slice(0, 12)
-            .map((item) => ({
-              title: item.title || item.name,
-              type: item.media_type === "tv" ? "SERIE" : "PELÍCULA",
-              genre: "Drama",
-              service: "Catálogo",
-              year: (item.release_date || item.first_air_date || "").slice(
-                0,
-                4,
-              ),
-              rating: item.vote_average?.toFixed(1),
-              image: item.poster_path
-                ? `https://image.tmdb.org/t/p/w780${item.poster_path}`
-                : fallbackShows[0].image,
-            })),
+          data.results.slice(0, 12).map((item) => ({
+            title: item.title || item.name,
+            type: item.media_type === "tv" ? "SERIE" : "PELÍCULA",
+            genre: "Drama",
+            service: "Catálogo",
+            year: (item.release_date || item.first_air_date || "").slice(0, 4),
+            rating: item.vote_average?.toFixed(1),
+            image: item.poster_path
+              ? `https://image.tmdb.org/t/p/w780${item.poster_path}`
+              : fallbackShows[0].image,
+          })),
         );
       })
       .catch(() => notify("No se pudo actualizar el catálogo"));
@@ -483,7 +598,12 @@ function App() {
     setActiveTab("Explorar");
     notify("Sesión cerrada");
   };
-  const clearLocalData = () => { setLiked([]); setHistory([]); localStorage.removeItem("streaminparty-favorites"); localStorage.removeItem("streaminparty-history"); };
+  const clearLocalData = () => {
+    setLiked([]);
+    setHistory([]);
+    localStorage.removeItem("streaminparty-favorites");
+    localStorage.removeItem("streaminparty-history");
+  };
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -756,7 +876,14 @@ function App() {
         <AuthModal onClose={() => setAuthOpen(false)} notify={notify} />
       )}
       {settingsOpen && (
-        <SettingsModal user={user} preferences={preferences} onPreferencesChange={setPreferences} onClose={() => setSettingsOpen(false)} onClearData={clearLocalData} notify={notify} />
+        <SettingsModal
+          user={user}
+          preferences={preferences}
+          onPreferencesChange={setPreferences}
+          onClose={() => setSettingsOpen(false)}
+          onClearData={clearLocalData}
+          notify={notify}
+        />
       )}
       {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
       {toast && (

@@ -25,6 +25,31 @@ El archivo `.env.local` nunca debe subirse a GitHub. Las reglas restringen las s
 
 Si defines `VITE_TMDB_API_KEY`, el catálogo se actualiza con metadatos e imágenes de TMDB. Sin esa variable se utiliza el catálogo de demostración incluido. La app no aloja ni reproduce contenido protegido: los botones de servicios abren los sitios oficiales de Netflix, Prime Video, Max, Disney+ y Apple TV+.
 
+## Integración OTT autorizada
+
+La carpeta `src/streaming/` contiene una capa separada para reproducción sincronizada de contenido propio o de un proveedor que entregue un SDK/API oficial:
+
+- `roomSync.js` publica y escucha `currentTime`, `isPlaying` y `updatedAt` en Firestore, y fuerza resincronización cuando la diferencia supera 2 segundos.
+- `LicensedMediaPlayer.jsx` usa el elemento multimedia del navegador con una URL de contenido licenciada, separando el reproductor de la lógica de sala.
+- El modelo de sala es `Room { id, participants, hostId, mediaUrl, currentTime, isPlaying }`. En Firestore se valida que solo se actualicen campos de sincronización permitidos.
+
+Para Netflix, Disney+, Max u otro OTT con DRM, la reproducción integrada requiere un acuerdo comercial y el SDK oficial del proveedor (por ejemplo, un módulo Widevine/FairPlay autorizado). La aplicación no captura cookies, no intercepta tráfico, no llama endpoints privados, no extrae tokens y no implementa bypass de DRM. Sin esa autorización, la opción soportada es abrir el servicio oficial y sincronizar únicamente el estado de la sala.
+
+```mermaid
+flowchart LR
+	A[Usuario inicia sesión con Firebase] --> B[Entra o crea una sala]
+	B --> C{Fuente autorizada}
+	C -->|SDK oficial OTT| D[Reproductor DRM del proveedor]
+	C -->|Contenido propio| E[LicensedMediaPlayer]
+	D --> F[Host publica play/pause/tiempo]
+	E --> F
+	F --> G[Firestore /rooms/{id}]
+	G --> H[Guests reciben onSnapshot]
+	H --> I{Desviación > 2 s}
+	I -->|Sí| J[Reajustar currentTime]
+	I -->|No| K[Continuar reproducción]
+```
+
 ## Funcionalidades actuales
 
 - Catálogo visual con filtros por servicio y género.

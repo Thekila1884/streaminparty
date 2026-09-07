@@ -13,7 +13,12 @@ service cloud.firestore {
 
     match /rooms/{roomId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update: if isMember(roomId);
+      allow read: if isMember(roomId);
+      allow update: if isMember(roomId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'currentTime', 'isPlaying', 'updatedBy', 'updatedAt', 'currentTitle', 'service'
+        ])
+        && request.resource.data.updatedBy == request.auth.uid;
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
 
       match /members/{userId} {
