@@ -994,20 +994,34 @@ function App() {
   const createRoom = async () => {
     if (!user) return setAuthOpen(true);
     if (!db) return notify("Configura Firebase para crear salas");
-    const newRoomId = crypto.randomUUID();
-    await setDoc(doc(db, "rooms", newRoomId), {
+    const newRoomId = globalThis.crypto?.randomUUID?.() || `room-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const newRoom = {
+      id: newRoomId,
       ownerId: user.uid,
       title: "Sala de Javier",
       currentTitle: "Neon Runner",
       playing: false,
-      updatedAt: serverTimestamp(),
-    });
-    await setDoc(doc(db, "rooms", newRoomId, "members", user.uid), {
-      displayName: user.displayName || user.email,
-      joinedAt: serverTimestamp(),
-    });
-    setRoomId(newRoomId);
-    setRoomOpen(true);
+    };
+    try {
+      await setDoc(doc(db, "rooms", newRoomId), {
+        ...newRoom,
+        updatedAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, "rooms", newRoomId, "members", user.uid), {
+        displayName: user.displayName || user.email,
+        joinedAt: serverTimestamp(),
+      });
+      setRoom(newRoom);
+      setRoomId(newRoomId);
+      setRoomOpen(true);
+    } catch (error) {
+      const reason = error?.code === "permission-denied"
+        ? "Firebase rechazó la sala: publica firestore.rules y verifica que tu usuario esté autenticado."
+        : error?.code === "unavailable"
+          ? "Firebase no está disponible. Permite firestore.googleapis.com en tu navegador o red."
+          : "No se pudo crear la sala. Revisa la configuración de Firebase.";
+      notify(reason);
+    }
   };
   const selectShow = async (show) => {
     setHistory((current) =>
