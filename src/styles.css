@@ -1123,3 +1123,182 @@ button {
   background: #211619;
   font-size: 10px;
 }
+.room-chat {
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.chat-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.chat-heading svg {
+  color: var(--lime);
+}
+.chat-heading span {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 9px;
+}
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 12px 2px;
+}
+.chat-empty {
+  color: var(--muted);
+  text-align: center;
+  font-size: 10px;
+  padding: 15px 0;
+}
+.chat-message {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.chat-message.own {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.chat-avatar {
+  flex: 0 0 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #688f91;
+  color: white;
+  font-size: 8px;
+}
+.chat-message strong {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-bottom: 3px;
+}
+.chat-message p {
+  margin: 0;
+  padding: 7px 9px;
+  background: #242832;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+}
+.chat-message img,
+.chat-message video {
+  display: block;
+  max-width: 180px;
+  max-height: 125px;
+  margin-top: 5px;
+  object-fit: cover;
+}
+.chat-composer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: #101216;
+  padding: 5px;
+}
+.chat-composer input:not([type="file"]) {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--cream);
+  padding: 7px;
+  font-size: 11px;
+}
+.chat-composer button,
+.attachment-button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: #292e37;
+  color: var(--cream);
+}
+.attachment-button {
+  position: relative;
+  cursor: pointer;
+}
+.attachment-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.chat-composer > button:last-child {
+  background: var(--lime);
+  color: #14180e;
+}
+.install-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border: 1px solid rgba(199, 243, 107, 0.35);
+  color: var(--lime);
+  background: rgba(199, 243, 107, 0.06);
+  border-radius: 5px;
+  font-size: 11px;
+}
+.install-button:hover {
+  background: rgba(199, 243, 107, 0.13);
+}
+.room-call {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.call-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.call-heading svg {
+  color: var(--lime);
+}
+.call-heading span {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 9px;
+}
+.incoming-call {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 0;
+  padding: 9px;
+  background: rgba(199, 243, 107, 0.08);
+  font-size: 10px;
+}
+.incoming-call span {
+  margin-right: auto;
+}
+.incoming-call button {
+  padding: 8px;
+  background: #292e37;
+  font-size: 9px;
+}
+.incoming-call .primary-button {
+  padding: 8px 10px;
+}
+.call-videos {
+  display: flex;
+  gap: 5px;
+  margin: 10px 0;
+}
+.call-videos video {
+  width: 50%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #08090b;
+}

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   CircleHelp,
   Copy,
+  Download,
   Grid2X2,
   Heart,
   History,
@@ -14,9 +15,13 @@ import {
   ListFilter,
   LogIn,
   LogOut,
+  MessageCircle,
+  Paperclip,
+  Phone,
   Play,
   Plus,
   Search,
+  Send,
   Settings,
   SlidersHorizontal,
   Sparkles,
@@ -24,12 +29,19 @@ import {
   X,
 } from "lucide-react";
 import {
+  addDoc,
+  collection,
   doc,
   onSnapshot,
+  orderBy,
+  query,
+  arrayUnion,
+  deleteDoc,
   serverTimestamp,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -39,7 +51,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { auth, db, firebaseReady } from "./firebase";
+import { auth, db, firebaseReady, storage } from "./firebase";
 import "./styles.css";
 
 const services = [
@@ -126,6 +138,144 @@ function initials(user) {
   return (user?.displayName || user?.email || "JD").slice(0, 2).toUpperCase();
 }
 
+function RoomChat({ roomId, user, notify }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!db || !roomId) return undefined;
+    const messagesQuery = query(
+      collection(db, "rooms", roomId, "messages"),
+      orderBy("createdAt", "asc"),
+    );
+    return onSnapshot(
+      messagesQuery,
+      (snapshot) => {
+        setMessages(
+          snapshot.docs.map((item) => ({ id: item.id, ...item.data() })),
+        );
+      },
+      () => notify("No se pudo cargar el chat"),
+    );
+  }, [roomId, notify]);
+
+  const sendMessage = async (event) => {
+    event?.preventDefault();
+    const cleanText = text.trim();
+    if (!cleanText || !db || !user) return;
+    await addDoc(collection(db, "rooms", roomId, "messages"), {
+      senderId: user.uid,
+      senderName: user.displayName || user.email,
+      text: cleanText,
+      createdAt: serverTimestamp(),
+    });
+    setText("");
+  };
+
+  const uploadAttachment = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !storage || !db || !user) return;
+    if (!file.type.match(/^(image|video)\//))
+      return notify("Solo puedes enviar fotos o videos");
+    if (file.size > 50 * 1024 * 1024)
+      return notify("El archivo supera el límite de 50 MB");
+    setUploading(true);
+    try {
+      const fileRef = ref(
+        storage,
+        `rooms/${roomId}/${user.uid}/${crypto.randomUUID()}-${file.name}`,
+      );
+      await uploadBytes(fileRef, file, { contentType: file.type });
+      const attachmentUrl = await getDownloadURL(fileRef);
+      await addDoc(collection(db, "rooms", roomId, "messages"), {
+        senderId: user.uid,
+        senderName: user.displayName || user.email,
+        attachmentUrl,
+        attachmentName: file.name,
+        attachmentType: file.type,
+        createdAt: serverTimestamp(),
+      });
+    } catch {
+      notify("No se pudo enviar el archivo");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <section className="room-chat">
+      <div className="chat-heading">
+        <MessageCircle size={16} />
+        <strong>Chat de la sala</strong>
+        <span>{messages.length} mensajes</span>
+      </div>
+      <div className="chat-messages">
+        {messages.length === 0 && (
+          <p className="chat-empty">
+            Escribe algo para empezar la conversación.
+          </p>
+        )}
+        {messages.map((message) => (
+          <article
+            className={
+              message.senderId === user?.uid
+                ? "chat-message own"
+                : "chat-message"
+            }
+            key={message.id}
+          >
+            <div className="chat-avatar">
+              {message.senderName?.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <strong>{message.senderName}</strong>
+              {message.text && <p>{message.text}</p>}
+              {message.attachmentUrl &&
+                (message.attachmentType?.startsWith("video") ? (
+                  <video controls src={message.attachmentUrl} />
+                ) : (
+                  <a
+                    href={message.attachmentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <img
+                      src={message.attachmentUrl}
+                      alt={message.attachmentName || "Imagen compartida"}
+                    />
+                  </a>
+                ))}
+            </div>
+          </article>
+        ))}
+      </div>
+      <form className="chat-composer" onSubmit={sendMessage}>
+        <label className="attachment-button" aria-label="Adjuntar foto o video">
+          <Paperclip size={16} />
+          <input
+            type="file"
+            accept="image/*,video/*"
+            onChange={uploadAttachment}
+            disabled={uploading}
+          />
+        </label>
+        <input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder={
+            uploading ? "Subiendo archivo..." : "Escribe un mensaje..."
+          }
+        />
+        <button type="submit" aria-label="Enviar mensaje">
+          <Send size={16} />
+        </button>
+      </form>
+    </section>
+  );
+}
+
 function storedArray(key) {
   try {
     const value = JSON.parse(localStorage.getItem(key) || "[]");
@@ -133,6 +283,219 @@ function storedArray(key) {
   } catch {
     return [];
   }
+}
+
+function RoomCall({ roomId, user, notify }) {
+  const localVideo = useRef(null);
+  const remoteVideo = useRef(null);
+  const peerRef = useRef(null);
+  const callRef = useRef(null);
+  const seenCandidates = useRef(new Set());
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [callStatus, setCallStatus] = useState("idle");
+
+  const stopCall = async () => {
+    peerRef.current?.close();
+    peerRef.current = null;
+    localVideo.current?.srcObject?.getTracks().forEach((track) => track.stop());
+    remoteVideo.current?.srcObject
+      ?.getTracks()
+      .forEach((track) => track.stop());
+    if (callRef.current) await deleteDoc(callRef.current).catch(() => {});
+    callRef.current = null;
+    setIncomingCall(null);
+    setCallStatus("idle");
+  };
+
+  const media = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
+    });
+    if (localVideo.current) localVideo.current.srcObject = stream;
+    return stream;
+  };
+
+  const createPeer = (callDocument) => {
+    const peer = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    });
+    peer.ontrack = (event) => {
+      if (remoteVideo.current) remoteVideo.current.srcObject = event.streams[0];
+    };
+    peer.onicecandidate = (event) => {
+      if (event.candidate)
+        updateDoc(callDocument, {
+          callerCandidates: arrayUnion(event.candidate.toJSON()),
+        }).catch(() => {});
+    };
+    peerRef.current = peer;
+    callRef.current = callDocument;
+    return peer;
+  };
+
+  useEffect(() => {
+    if (!db || !roomId || !user) return undefined;
+    return onSnapshot(
+      collection(db, "rooms", roomId, "calls"),
+      async (snapshot) => {
+        for (const item of snapshot.docs) {
+          const call = item.data();
+          if (
+            call.from === user.uid &&
+            call.answer &&
+            peerRef.current &&
+            !peerRef.current.currentRemoteDescription
+          ) {
+            await peerRef.current.setRemoteDescription(JSON.parse(call.answer));
+            setCallStatus("connected");
+          } else if (
+            call.from !== user.uid &&
+            call.status === "ringing" &&
+            call.to !== user.uid
+          ) {
+            setIncomingCall({ id: item.id, ...call });
+          }
+          if (
+            call.from === user.uid &&
+            call.calleeCandidates &&
+            peerRef.current
+          ) {
+            for (const candidate of call.calleeCandidates) {
+              const key = JSON.stringify(candidate);
+              if (!seenCandidates.current.has(key)) {
+                seenCandidates.current.add(key);
+                await peerRef.current
+                  .addIceCandidate(candidate)
+                  .catch(() => {});
+              }
+            }
+          }
+          if (
+            call.from !== user.uid &&
+            call.callerCandidates &&
+            peerRef.current &&
+            callRef.current?.id === item.id
+          ) {
+            for (const candidate of call.callerCandidates) {
+              const key = JSON.stringify(candidate);
+              if (!seenCandidates.current.has(key)) {
+                seenCandidates.current.add(key);
+                await peerRef.current
+                  .addIceCandidate(candidate)
+                  .catch(() => {});
+              }
+            }
+          }
+        }
+      },
+    );
+  }, [roomId, user]);
+
+  useEffect(
+    () => () => {
+      peerRef.current?.close();
+    },
+    [],
+  );
+
+  const startCall = async () => {
+    try {
+      const stream = await media();
+      const callDocument = doc(
+        collection(db, "rooms", roomId, "calls"),
+        user.uid,
+      );
+      const peer = createPeer(callDocument);
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      await setDoc(callDocument, {
+        from: user.uid,
+        fromName: user.displayName || user.email,
+        offer: JSON.stringify(offer),
+        status: "ringing",
+        createdAt: serverTimestamp(),
+      });
+      setCallStatus("calling");
+    } catch {
+      notify("No se pudo acceder a la cámara o micrófono");
+    }
+  };
+
+  const acceptCall = async () => {
+    if (!incomingCall) return;
+    try {
+      const stream = await media();
+      const callDocument = doc(db, "rooms", roomId, "calls", incomingCall.id);
+      const peer = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+      peer.ontrack = (event) => {
+        if (remoteVideo.current)
+          remoteVideo.current.srcObject = event.streams[0];
+      };
+      peer.onicecandidate = (event) => {
+        if (event.candidate)
+          updateDoc(callDocument, {
+            calleeCandidates: arrayUnion(event.candidate.toJSON()),
+          }).catch(() => {});
+      };
+      peerRef.current = peer;
+      callRef.current = callDocument;
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+      await peer.setRemoteDescription(JSON.parse(incomingCall.offer));
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      await updateDoc(callDocument, {
+        answer: JSON.stringify(answer),
+        to: user.uid,
+        status: "connected",
+      });
+      setIncomingCall(null);
+      setCallStatus("connected");
+    } catch {
+      notify("No se pudo aceptar la llamada");
+    }
+  };
+
+  return (
+    <section className="room-call">
+      <div className="call-heading">
+        <Phone size={15} />
+        <strong>Llamada de sala</strong>
+        <span>
+          {callStatus === "connected" ? "Conectados" : "Audio y video"}
+        </span>
+      </div>
+      {incomingCall && (
+        <div className="incoming-call">
+          <span>{incomingCall.fromName} te está llamando</span>
+          <button onClick={acceptCall} className="primary-button">
+            Aceptar
+          </button>
+          <button onClick={() => setIncomingCall(null)}>Rechazar</button>
+        </div>
+      )}
+      <div className="call-videos">
+        {callStatus !== "idle" && (
+          <>
+            <video ref={remoteVideo} autoPlay playsInline />
+            <video ref={localVideo} autoPlay muted playsInline />
+          </>
+        )}
+      </div>
+      {callStatus === "idle" ? (
+        <button className="primary-button full" onClick={startCall}>
+          <Phone size={16} /> Iniciar llamada
+        </button>
+      ) : (
+        <button className="danger-button" onClick={stopCall}>
+          Colgar llamada
+        </button>
+      )}
+    </section>
+  );
 }
 
 function AuthModal({ onClose, notify }) {
@@ -288,6 +651,8 @@ function RoomModal({ room, user, onClose, notify }) {
         <button className="primary-button full" onClick={copyLink}>
           <Link2 size={17} /> Invitar amigos
         </button>
+        <RoomChat roomId={room.id} user={user} notify={notify} />
+        <RoomCall roomId={room.id} user={user} notify={notify} />
       </div>
     </div>
   );
@@ -444,6 +809,7 @@ function App() {
   );
   const [toast, setToast] = useState("");
   const [shows, setShows] = useState(fallbackShows);
+  const [installPrompt, setInstallPrompt] = useState(null);
   const [preferences, setPreferences] = useState(() => {
     try {
       return {
@@ -477,6 +843,24 @@ function App() {
   useEffect(() => {
     localStorage.setItem("streaminparty-history", JSON.stringify(history));
   }, [history]);
+  useEffect(() => {
+    const capturePrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    window.addEventListener("beforeinstallprompt", capturePrompt);
+    return () =>
+      window.removeEventListener("beforeinstallprompt", capturePrompt);
+  }, []);
+  const installApp = async () => {
+    if (!installPrompt)
+      return notify(
+        "En el móvil, usa el menú del navegador y selecciona Añadir a pantalla de inicio",
+      );
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
   useEffect(() => {
     if (!auth) return undefined;
     return onAuthStateChanged(auth, setUser);
@@ -697,6 +1081,13 @@ function App() {
             </button>
             <button className="invite-button" onClick={createRoom}>
               <Link2 size={16} /> Invitar amigos
+            </button>
+            <button
+              className="install-button"
+              onClick={installApp}
+              aria-label="Instalar Streaminparty"
+            >
+              <Download size={16} /> Instalar
             </button>
             <button
               className="tiny-avatar"

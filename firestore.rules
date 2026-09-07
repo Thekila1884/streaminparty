@@ -26,6 +26,19 @@ service cloud.firestore {
         allow create: if signedIn() && request.auth.uid == userId && exists(/databases/$(database)/documents/rooms/$(roomId));
         allow delete: if signedIn() && request.auth.uid == userId;
       }
+
+      match /messages/{messageId} {
+        allow read: if isMember(roomId);
+        allow create: if isMember(roomId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['senderId', 'senderName', 'text', 'attachmentUrl', 'attachmentName', 'attachmentType', 'createdAt']);
+        allow delete: if isMember(roomId) && resource.data.senderId == request.auth.uid;
+      }
+
+      match /calls/{callId} {
+        allow read, write: if isMember(roomId)
+          && (request.resource == null || request.resource.data.from == request.auth.uid || request.resource.data.to == request.auth.uid);
+      }
     }
   }
 }

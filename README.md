@@ -15,9 +15,10 @@ Abre la URL que muestre Vite en el navegador.
 
 1. Crea un proyecto en Firebase y habilita Authentication > Email/Password y Authentication > Google.
 2. Crea Firestore en producción y publica las reglas con `firebase deploy --only firestore:rules`.
-3. Registra una Web App en Firebase y copia sus valores a un archivo `.env.local` usando `.env.example`.
-4. En Vercel, añade las mismas variables `VITE_FIREBASE_*` para Production, Preview y Development.
-5. En Firebase Authentication > Settings > Authorized domains, añade el dominio de Vercel y tu dominio personalizado.
+3. Activa Storage y publica sus reglas con `firebase deploy --only storage`.
+4. Registra una Web App en Firebase y copia sus valores a un archivo `.env.local` usando `.env.example`.
+5. En Vercel, añade las mismas variables `VITE_FIREBASE_*` para Production, Preview y Development.
+6. En Firebase Authentication > Settings > Authorized domains, añade el dominio de Vercel y tu dominio personalizado.
 
 El archivo `.env.local` nunca debe subirse a GitHub. Las reglas restringen las salas y perfiles a usuarios autenticados; un enlace compartido permite unirse a esa sala concreta.
 
@@ -58,6 +59,9 @@ flowchart LR
 - Sala compartida con enlace de invitación.
 - Autenticación real con correo y contraseña mediante Firebase Auth.
 - Estado de reproducción sincronizado en tiempo real mediante Firestore.
+- Chat en tiempo real por sala con fotos y videos de hasta 50 MB mediante Storage.
+- Llamada de audio/video WebRTC entre participantes con señalización protegida por Firestore.
+- Instalación como aplicación web (PWA) desde el botón `Instalar` o el menú del navegador.
 - Diseño responsive para escritorio y móvil.
 
 ## Producción en Vercel
