@@ -1203,11 +1203,12 @@ function App() {
   };
   useEffect(() => {
     if (!auth) return undefined;
-    return onAuthStateChanged(auth, setUser);
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, []);
   useEffect(() => {
     if (!db || !user) return undefined;
-    return onSnapshot(
+    const unsubscribe = onSnapshot(
       query(collection(db, "publicRooms"), orderBy("updatedAt", "desc")),
       (snapshot) => {
         setActiveRooms(
@@ -1216,6 +1217,7 @@ function App() {
       },
       () => notify("No se pudieron cargar las salas activas"),
     );
+    return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, [user]);
   const joinRoom = async (targetRoom, password = "") => {
     if (!user) return setAuthOpen(true);
@@ -1275,7 +1277,7 @@ function App() {
           return;
         }
         await joinRoom(publicRoom);
-        unsubscribe = onSnapshot(
+        const roomUnsubscribe = onSnapshot(
           doc(db, "rooms", roomId),
           (snapshot) => {
             if (snapshot.exists()) {
@@ -1285,6 +1287,8 @@ function App() {
           },
           () => notify("No se pudo leer la sala"),
         );
+        unsubscribe =
+          typeof roomUnsubscribe === "function" ? roomUnsubscribe : () => {};
       } catch {
         notify("No se pudo unir a la sala");
       }
