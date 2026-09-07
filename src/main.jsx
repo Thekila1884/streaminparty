@@ -61,6 +61,7 @@ const services = [
   { name: "Max", color: "#9272ff", url: "https://www.max.com/" },
   { name: "Disney+", color: "#3c72ff", url: "https://www.disneyplus.com/" },
   { name: "Apple TV+", color: "#d7d7d7", url: "https://tv.apple.com/" },
+  { name: "Crunchyroll", color: "#f47521" },
   { name: "Google", color: "#4285f4", google: true },
 ];
 const genres = [
@@ -546,6 +547,11 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
       show.title === room.currentTitle && show.service === selectedService,
   );
   const displayShow = selectedShow || serviceShows[0];
+  const displayTitle =
+    displayShow?.title ||
+    (room.currentTitle && room.currentTitle !== "Selecciona un título"
+      ? room.currentTitle
+      : "");
   const copyLink = async () => {
     await navigator.clipboard?.writeText(roomUrl);
     setCopying(true);
@@ -569,6 +575,17 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
       updatedAt: serverTimestamp(),
       updatedBy: user.uid,
     });
+  };
+  const selectGoogleResult = async (title) => {
+    if (!db || !title) return;
+    await updateDoc(doc(db, "rooms", room.id), {
+      service: selectedService,
+      currentTitle: title,
+      updatedAt: serverTimestamp(),
+      updatedBy: user.uid,
+    });
+    notify(`${title} seleccionado para ${selectedService}`);
+    setGoogleSearchOpen(false);
   };
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -651,14 +668,14 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
               <span className={room.playing ? "live-dot" : "paused-dot"} />{" "}
               {room.playing ? "EN REPRODUCCIÓN" : "EN PAUSA"}
             </span>
-            <strong>{displayShow?.title || "Sin título"}</strong>
+            <strong>{displayTitle || "Sin título seleccionado"}</strong>
             <small>{selectedService} · sincronizado para la sala</small>
           </div>
         </div>
         <div className="room-state">
           <span className={room.playing ? "live-dot" : "paused-dot"} />
           {room.playing ? "Reproducción activa" : "En pausa"}
-          <strong>{displayShow?.title || "Selecciona un título"}</strong>
+          <strong>{displayTitle || "Selecciona un título"}</strong>
         </div>
         <div className="room-controls">
           <button onClick={() => changePlayback(false)}>
@@ -677,7 +694,10 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
         <RoomChat roomId={room.id} user={user} notify={notify} />
         <RoomCall roomId={room.id} user={user} notify={notify} />
         {googleSearchOpen && (
-          <GoogleSearchModal onClose={() => setGoogleSearchOpen(false)} />
+          <GoogleSearchModal
+            onClose={() => setGoogleSearchOpen(false)}
+            onSelectResult={selectGoogleResult}
+          />
         )}
       </div>
     </div>
@@ -813,10 +833,28 @@ function HelpModal({ onClose }) {
   );
 }
 
-function GoogleSearchModal({ onClose }) {
+function GoogleSearchModal({ onClose, onSelectResult }) {
   const searchContainer = useRef(null);
 
   useEffect(() => {
+    let observer;
+    const addSelectionButtons = () => {
+      if (!searchContainer.current) return;
+      searchContainer.current
+        .querySelectorAll(".gsc-result")
+        .forEach((result) => {
+          if (result.dataset.streaminSelectable) return;
+          const title = result.querySelector(".gs-title")?.textContent?.trim();
+          if (!title) return;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "cse-select-button";
+          button.textContent = "Seleccionar para la sala";
+          button.addEventListener("click", () => onSelectResult(title));
+          result.appendChild(button);
+          result.dataset.streaminSelectable = "true";
+        });
+    };
     const renderSearch = () => {
       if (window.google?.search?.cse?.element && searchContainer.current) {
         searchContainer.current.innerHTML = "";
@@ -824,6 +862,12 @@ function GoogleSearchModal({ onClose }) {
           div: searchContainer.current,
           tag: "search",
         });
+        observer = new MutationObserver(addSelectionButtons);
+        observer.observe(searchContainer.current, {
+          childList: true,
+          subtree: true,
+        });
+        addSelectionButtons();
       }
     };
     const existingScript = document.querySelector(
@@ -831,7 +875,7 @@ function GoogleSearchModal({ onClose }) {
     );
     if (existingScript) {
       renderSearch();
-      return undefined;
+      return () => observer?.disconnect();
     }
     const script = document.createElement("script");
     script.src = "https://cse.google.com/cse.js?cx=e4507537a2d404791";
@@ -839,8 +883,8 @@ function GoogleSearchModal({ onClose }) {
     script.dataset.streaminGoogleCse = "true";
     script.onload = renderSearch;
     document.head.appendChild(script);
-    return undefined;
-  }, []);
+    return () => observer?.disconnect();
+  }, [onSelectResult]);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -856,7 +900,10 @@ function GoogleSearchModal({ onClose }) {
         </div>
         <p className="eyebrow">BÚSQUEDA GOOGLE</p>
         <h2>Busca dentro de Streaminparty</h2>
-        <p>Resultados proporcionados por Google Programmable Search.</p>
+        <p>
+          Resultados proporcionados por Google Programmable Search. Selecciona
+          un resultado para añadirlo a la sala.
+        </p>
         <div ref={searchContainer} className="gcse-search" />
       </div>
     </div>
