@@ -1303,6 +1303,8 @@ function App() {
   const createRoom = async (roomName = "", password = "") => {
     if (!user) return setAuthOpen(true);
     if (!db) return notify("Configura Firebase para crear salas");
+    if (typeof roomName !== "string") roomName = "";
+    if (typeof password !== "string") password = "";
     const newRoomId =
       globalThis.crypto?.randomUUID?.() ||
       `room-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -1428,7 +1430,7 @@ function App() {
             </button>
           ))}
           <span className="nav-label space-top">TU SALA</span>
-          <button className="nav-item" onClick={createRoom}>
+          <button className="nav-item" onClick={() => createRoom()}>
             <Users size={18} />
             Sala compartida
             <span className="live-dot" />
@@ -1490,7 +1492,7 @@ function App() {
             >
               <Bell size={19} />
             </button>
-            <button className="invite-button" onClick={createRoom}>
+            <button className="invite-button" onClick={() => createRoom()}>
               <Link2 size={16} /> Invitar amigos
             </button>
             <button
@@ -1525,7 +1527,7 @@ function App() {
                 Descubre qué ver, crea una sala y disfruta de tus plataformas
                 favoritas con tus amigos.
               </p>
-              <button className="primary-button" onClick={createRoom}>
+              <button className="primary-button" onClick={() => createRoom()}>
                 <Play size={17} fill="currentColor" /> Entrar a mi sala
               </button>
             </div>
