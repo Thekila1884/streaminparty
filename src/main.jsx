@@ -71,69 +71,6 @@ const genres = [
   "Ciencia ficción",
   "Animación",
 ];
-const fallbackShows = [
-  {
-    title: "The Last Voyage",
-    type: "SERIE",
-    genre: "Acción",
-    service: "Netflix",
-    year: "2024",
-    rating: "8.7",
-    image:
-      "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1000&q=85",
-  },
-  {
-    title: "Midnight City",
-    type: "PELÍCULA",
-    genre: "Drama",
-    service: "Max",
-    year: "2024",
-    rating: "8.1",
-    image:
-      "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1000&q=85",
-  },
-  {
-    title: "Neon Runner",
-    type: "PELÍCULA",
-    genre: "Ciencia ficción",
-    service: "Prime Video",
-    year: "2023",
-    rating: "7.9",
-    image:
-      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=85",
-  },
-  {
-    title: "Wild North",
-    type: "SERIE",
-    genre: "Drama",
-    service: "Apple TV+",
-    year: "2024",
-    rating: "9.0",
-    image:
-      "https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&w=1000&q=85",
-  },
-  {
-    title: "Parallel Worlds",
-    type: "SERIE",
-    genre: "Ciencia ficción",
-    service: "Disney+",
-    year: "2023",
-    rating: "8.4",
-    image:
-      "https://images.unsplash.com/photo-1534791547706-9a05559b672c?auto=format&fit=crop&w=1000&q=85",
-  },
-  {
-    title: "Paper Planes",
-    type: "PELÍCULA",
-    genre: "Comedia",
-    service: "Netflix",
-    year: "2024",
-    rating: "7.5",
-    image:
-      "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1000&q=85",
-  },
-];
-
 function initials(user) {
   return (user?.displayName || user?.email || "JD").slice(0, 2).toUpperCase();
 }
@@ -597,7 +534,11 @@ function AuthModal({ onClose, notify }) {
 
 function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
   const [copying, setCopying] = useState(false);
+  const [googleSearchOpen, setGoogleSearchOpen] = useState(false);
   const roomUrl = `${window.location.origin}/?room=${room.id}`;
+  const userRoomName =
+    user?.displayName || user?.email?.split("@")[0] || "tu sala";
+  const roomTitle = room.ownerName ? room.title : `Sala de ${userRoomName}`;
   const selectedService = room.service || "Netflix";
   const serviceShows = shows.filter((show) => show.service === selectedService);
   const selectedShow = shows.find(
@@ -639,7 +580,7 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
           <Users size={24} />
         </div>
         <p className="eyebrow">SALA EN TIEMPO REAL</p>
-        <h2>{room.title || "Tu sala de watch party"}</h2>
+        <h2>{roomTitle || `Sala de ${userRoomName}`}</h2>
         <p>
           La reproducción y el estado de la sala se sincronizan con Firestore.
         </p>
@@ -690,6 +631,12 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
             </div>
           )}
         </div>
+        <button
+          className="room-google-button"
+          onClick={() => setGoogleSearchOpen(true)}
+        >
+          <Search size={15} /> Buscar títulos en Google
+        </button>
         <div className="room-player-frame">
           {displayShow ? (
             <img src={displayShow.image} alt={displayShow.title} />
@@ -729,6 +676,9 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
         </button>
         <RoomChat roomId={room.id} user={user} notify={notify} />
         <RoomCall roomId={room.id} user={user} notify={notify} />
+        {googleSearchOpen && (
+          <GoogleSearchModal onClose={() => setGoogleSearchOpen(false)} />
+        )}
       </div>
     </div>
   );
@@ -935,7 +885,7 @@ function App() {
     new URLSearchParams(window.location.search).get("room"),
   );
   const [toast, setToast] = useState("");
-  const [shows, setShows] = useState(fallbackShows);
+  const [shows, setShows] = useState([]);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [preferences, setPreferences] = useState(() => {
     try {
@@ -1035,17 +985,21 @@ function App() {
       .then((data) => {
         if (!data?.results) return;
         setShows(
-          data.results.slice(0, 12).map((item) => ({
-            title: item.title || item.name,
-            type: item.media_type === "tv" ? "SERIE" : "PELÍCULA",
-            genre: "Drama",
-            service: "Catálogo",
-            year: (item.release_date || item.first_air_date || "").slice(0, 4),
-            rating: item.vote_average?.toFixed(1),
-            image: item.poster_path
-              ? `https://image.tmdb.org/t/p/w780${item.poster_path}`
-              : fallbackShows[0].image,
-          })),
+          data.results
+            .filter((item) => item.poster_path)
+            .slice(0, 12)
+            .map((item) => ({
+              title: item.title || item.name,
+              type: item.media_type === "tv" ? "SERIE" : "PELÍCULA",
+              genre: "Drama",
+              service: "Catálogo",
+              year: (item.release_date || item.first_air_date || "").slice(
+                0,
+                4,
+              ),
+              rating: item.vote_average?.toFixed(1),
+              image: `https://image.tmdb.org/t/p/w780${item.poster_path}`,
+            })),
         );
       })
       .catch(() => notify("No se pudo actualizar el catálogo"));
@@ -1076,9 +1030,10 @@ function App() {
     const newRoom = {
       id: newRoomId,
       ownerId: user.uid,
-      title: "Sala de Javier",
+      ownerName: user.displayName || user.email?.split("@")[0] || "Usuario",
+      title: `Sala de ${user.displayName || user.email?.split("@")[0] || "tu sala"}`,
       service: "Netflix",
-      currentTitle: "The Last Voyage",
+      currentTitle: "",
       playing: false,
     };
     try {
@@ -1263,15 +1218,28 @@ function App() {
             </div>
             <div className="hero-art">
               <div className="hero-glow" />
-              <img src={shows[0].image} alt="Escena destacada" />
+              {shows[0] ? (
+                <img src={shows[0].image} alt={shows[0].title} />
+              ) : (
+                <div className="hero-art-empty">
+                  Configura TMDB para cargar títulos reales
+                </div>
+              )}
               <div className="floating-card">
                 <div
                   className="mini-poster"
-                  style={{ backgroundImage: `url(${shows[2]?.image})` }}
+                  style={
+                    shows[2]
+                      ? { backgroundImage: `url(${shows[2].image})` }
+                      : undefined
+                  }
                 />
                 <div>
                   <span>AHORA EN LA SALA</span>
-                  <strong>{room?.currentTitle || "Neon Runner"}</strong>
+                  <strong>
+                    {shows.find((show) => show.title === room?.currentTitle)
+                      ?.title || "Sin título seleccionado"}
+                  </strong>
                   <small>
                     <span className="live-dot" />{" "}
                     {room?.playing

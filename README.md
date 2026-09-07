@@ -24,7 +24,7 @@ El archivo `.env.local` nunca debe subirse a GitHub. Las reglas restringen las s
 
 ## Catálogo y servicios
 
-Si defines `VITE_TMDB_API_KEY`, el catálogo se actualiza con metadatos e imágenes de TMDB. Sin esa variable se utiliza el catálogo de demostración incluido. La app no aloja ni reproduce contenido protegido: los botones de servicios abren los sitios oficiales de Netflix, Prime Video, Max, Disney+ y Apple TV+.
+Si defines `VITE_TMDB_API_KEY`, el catálogo se actualiza con metadatos e imágenes reales de TMDB. Sin esa variable el catálogo permanece vacío para no mostrar títulos ficticios. La app no aloja ni reproduce contenido protegido: los botones de servicios abren los sitios oficiales de Netflix, Prime Video, Max, Disney+ y Apple TV+.
 
 ### Google dentro de la app
 
