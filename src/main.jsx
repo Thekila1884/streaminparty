@@ -599,8 +599,12 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
   const [copying, setCopying] = useState(false);
   const roomUrl = `${window.location.origin}/?room=${room.id}`;
   const selectedService = room.service || "Netflix";
-  const selectedShow = shows.find((show) => show.title === room.currentTitle);
   const serviceShows = shows.filter((show) => show.service === selectedService);
+  const selectedShow = shows.find(
+    (show) =>
+      show.title === room.currentTitle && show.service === selectedService,
+  );
+  const displayShow = selectedShow || serviceShows[0];
   const copyLink = async () => {
     await navigator.clipboard?.writeText(roomUrl);
     setCopying(true);
@@ -687,8 +691,8 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
           )}
         </div>
         <div className="room-player-frame">
-          {selectedShow ? (
-            <img src={selectedShow.image} alt={selectedShow.title} />
+          {displayShow ? (
+            <img src={displayShow.image} alt={displayShow.title} />
           ) : (
             <div className="room-player-placeholder">
               <Play size={28} />
@@ -700,14 +704,14 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
               <span className={room.playing ? "live-dot" : "paused-dot"} />{" "}
               {room.playing ? "EN REPRODUCCIÓN" : "EN PAUSA"}
             </span>
-            <strong>{room.currentTitle || "Sin título"}</strong>
+            <strong>{displayShow?.title || "Sin título"}</strong>
             <small>{selectedService} · sincronizado para la sala</small>
           </div>
         </div>
         <div className="room-state">
           <span className={room.playing ? "live-dot" : "paused-dot"} />
           {room.playing ? "Reproducción activa" : "En pausa"}
-          <strong>{room.currentTitle || "Selecciona un título"}</strong>
+          <strong>{displayShow?.title || "Selecciona un título"}</strong>
         </div>
         <div className="room-controls">
           <button onClick={() => changePlayback(false)}>
@@ -1073,7 +1077,8 @@ function App() {
       id: newRoomId,
       ownerId: user.uid,
       title: "Sala de Javier",
-      currentTitle: "Neon Runner",
+      service: "Netflix",
+      currentTitle: "The Last Voyage",
       playing: false,
     };
     try {
