@@ -16,7 +16,6 @@ import {
   LogIn,
   LogOut,
   MessageCircle,
-  Paperclip,
   Phone,
   Play,
   Plus,
@@ -41,7 +40,6 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -51,7 +49,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { auth, db, firebaseReady, storage } from "./firebase";
+import { auth, db, firebaseReady } from "./firebase";
 import "./styles.css";
 
 const NOOP = () => {};
@@ -233,7 +231,6 @@ function RoomsDirectoryModal({
 function RoomChat({ roomId, user, notify = NOOP }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!db || !roomId) return undefined;
@@ -263,37 +260,6 @@ function RoomChat({ roomId, user, notify = NOOP }) {
       createdAt: serverTimestamp(),
     });
     setText("");
-  };
-
-  const uploadAttachment = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || !storage || !db || !user) return;
-    if (!file.type.match(/^(image|video)\//))
-      return notify("Solo puedes enviar fotos o videos");
-    if (file.size > 50 * 1024 * 1024)
-      return notify("El archivo supera el límite de 50 MB");
-    setUploading(true);
-    try {
-      const fileRef = ref(
-        storage,
-        `rooms/${roomId}/${user.uid}/${crypto.randomUUID()}-${file.name}`,
-      );
-      await uploadBytes(fileRef, file, { contentType: file.type });
-      const attachmentUrl = await getDownloadURL(fileRef);
-      await addDoc(collection(db, "rooms", roomId, "messages"), {
-        senderId: user.uid,
-        senderName: user.displayName || user.email,
-        attachmentUrl,
-        attachmentName: file.name,
-        attachmentType: file.type,
-        createdAt: serverTimestamp(),
-      });
-    } catch {
-      notify("No se pudo enviar el archivo");
-    } finally {
-      setUploading(false);
-    }
   };
 
   return (
@@ -344,21 +310,10 @@ function RoomChat({ roomId, user, notify = NOOP }) {
         ))}
       </div>
       <form className="chat-composer" onSubmit={sendMessage}>
-        <label className="attachment-button" aria-label="Adjuntar foto o video">
-          <Paperclip size={16} />
-          <input
-            type="file"
-            accept="image/*,video/*"
-            onChange={uploadAttachment}
-            disabled={uploading}
-          />
-        </label>
         <input
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder={
-            uploading ? "Subiendo archivo..." : "Escribe un mensaje..."
-          }
+          placeholder="Escribe un mensaje..."
         />
         <button type="submit" aria-label="Enviar mensaje">
           <Send size={16} />
