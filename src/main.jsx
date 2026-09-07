@@ -1079,7 +1079,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [activeService, setActiveService] = useState("Todos");
   const [activeGenre, setActiveGenre] = useState("Todos");
-  const [query, setQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Explorar");
   const [roomOpen, setRoomOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -1292,7 +1292,7 @@ function App() {
             (show) =>
               (activeService === "Todos" || show.service === activeService) &&
               (activeGenre === "Todos" || show.genre === activeGenre) &&
-              show.title.toLowerCase().includes(query.toLowerCase()),
+              show.title.toLowerCase().includes(searchQuery.toLowerCase()),
           );
   const toggleLike = (title) =>
     setLiked((current) =>
@@ -1477,8 +1477,8 @@ function App() {
           <div className="search-box">
             <Search size={18} />
             <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Buscar películas, series..."
             />
           </div>
@@ -1675,7 +1675,7 @@ function App() {
             {filteredShows.length === 0 && (
               <div className="empty-state">
                 <Search size={25} />
-                <p>No encontramos títulos para “{query}”.</p>
+                <p>No encontramos títulos para “{searchQuery}”.</p>
               </div>
             )}
           </section>
