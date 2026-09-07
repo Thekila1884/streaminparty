@@ -535,6 +535,7 @@ function AuthModal({ onClose, notify }) {
 
 function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
   const [copying, setCopying] = useState(false);
+  const [contentUrl, setContentUrl] = useState(room.mediaUrl || "");
   const [googleSearchOpen, setGoogleSearchOpen] = useState(false);
   const roomUrl = `${window.location.origin}/?room=${room.id}`;
   const userRoomName =
@@ -586,6 +587,24 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
     });
     notify(`${title} seleccionado para ${selectedService}`);
     setGoogleSearchOpen(false);
+  };
+  const saveContentUrl = async (event) => {
+    event.preventDefault();
+    const cleanUrl = contentUrl.trim();
+    try {
+      const parsedUrl = new URL(cleanUrl);
+      if (!["http:", "https:"].includes(parsedUrl.protocol))
+        throw new Error("protocol");
+      await updateDoc(doc(db, "rooms", room.id), {
+        mediaUrl: parsedUrl.toString(),
+        currentTitle: parsedUrl.hostname,
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+      });
+      notify("Enlace guardado para toda la sala");
+    } catch {
+      notify("Introduce un enlace válido que empiece por https://");
+    }
   };
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -654,6 +673,26 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
         >
           <Search size={15} /> Buscar títulos en Google
         </button>
+        <form className="room-url-form" onSubmit={saveContentUrl}>
+          <div className="room-section-label">ENLACE DEL CONTENIDO</div>
+          <div className="room-url-fields">
+            <input
+              type="url"
+              required
+              value={contentUrl}
+              onChange={(event) => setContentUrl(event.target.value)}
+              placeholder="https://tu-contenido-autorizado.com/video"
+              aria-label="Enlace del contenido"
+            />
+            <button type="submit" className="primary-button">
+              Usar enlace
+            </button>
+          </div>
+          <small>
+            Usa contenido propio o con licencia. Los servicios DRM pueden
+            impedir la incrustación.
+          </small>
+        </form>
         <div className="room-player-frame">
           {displayShow ? (
             <img src={displayShow.image} alt={displayShow.title} />
@@ -670,6 +709,16 @@ function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
             </span>
             <strong>{displayTitle || "Sin título seleccionado"}</strong>
             <small>{selectedService} · sincronizado para la sala</small>
+            {room.mediaUrl && (
+              <a
+                className="room-content-link"
+                href={room.mediaUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir contenido autorizado
+              </a>
+            )}
           </div>
         </div>
         <div className="room-state">
