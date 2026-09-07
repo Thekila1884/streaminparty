@@ -84,7 +84,7 @@ async function hashRoomPassword(password) {
   ).join("");
 }
 
-function CreateRoomModal({ onClose, onCreate }) {
+function CreateRoomModal({ onClose, onCreate = () => {} }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   return (
@@ -127,7 +127,7 @@ function CreateRoomModal({ onClose, onCreate }) {
   );
 }
 
-function RoomAccessModal({ room, onClose, onJoin }) {
+function RoomAccessModal({ room, onClose, onJoin = () => {} }) {
   const [password, setPassword] = useState("");
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -169,8 +169,8 @@ function RoomAccessModal({ room, onClose, onJoin }) {
 function RoomsDirectoryModal({
   rooms,
   queryText,
-  onQueryChange,
-  onJoin,
+  onQueryChange = () => {},
+  onJoin = () => {},
   onClose,
 }) {
   const visibleRooms = rooms.filter((room) =>
@@ -685,7 +685,14 @@ function AuthModal({ onClose, notify }) {
   );
 }
 
-function RoomModal({ room, user, shows, onSelectShow, onClose, notify }) {
+function RoomModal({
+  room,
+  user,
+  shows,
+  onSelectShow = () => {},
+  onClose,
+  notify,
+}) {
   const [copying, setCopying] = useState(false);
   const [contentUrl, setContentUrl] = useState(room.mediaUrl || "");
   const [googleSearchOpen, setGoogleSearchOpen] = useState(false);
@@ -1034,7 +1041,7 @@ function HelpModal({ onClose }) {
   );
 }
 
-function GoogleSearchModal({ onClose, onSelectResult }) {
+function GoogleSearchModal({ onClose, onSelectResult = () => {} }) {
   const searchContainer = useRef(null);
 
   useEffect(() => {
