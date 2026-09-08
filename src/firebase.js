@@ -26,7 +26,7 @@ const app = isConfigured ? initializeApp(firebaseConfig) : null;
 export const auth = app ? getAuth(app) : null;
 export const db = app
   ? initializeFirestore(app, {
-      experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: true,
       useFetchStreams: false,
     })
   : null;
