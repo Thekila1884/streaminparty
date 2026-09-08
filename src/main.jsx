@@ -31,11 +31,11 @@ import {
   addDoc,
   collection,
   doc,
+  deleteDoc,
   onSnapshot,
   orderBy,
   query,
   arrayUnion,
-  deleteDoc,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -1299,14 +1299,39 @@ function App() {
     const unsubscribe = onSnapshot(
       query(collection(db, "publicRooms"), orderBy("updatedAt", "desc")),
       (snapshot) => {
-        setActiveRooms(
-          snapshot.docs.map((item) => ({ id: item.id, ...item.data() })),
-        );
+        const cutoff = Date.now() - 10 * 60 * 1000;
+        const rooms = snapshot.docs
+          .map((item) => ({ id: item.id, ...item.data() }))
+          .filter((item) => item.lastActive?.toMillis?.() > cutoff);
+        setActiveRooms(rooms);
+        snapshot.docs.forEach((item) => {
+          const data = item.data();
+          if (
+            data.ownerId === user.uid &&
+            (!data.lastActive || data.lastActive.toMillis?.() <= cutoff)
+          ) {
+            deleteDoc(doc(db, "publicRooms", item.id)).catch(() => {});
+            deleteDoc(doc(db, "rooms", item.id)).catch(() => {});
+          }
+        });
       },
       () => notify("No se pudieron cargar las salas activas"),
     );
     return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, [user]);
+  useEffect(() => {
+    if (!db || !user || !roomId) return undefined;
+    const presenceRef = doc(db, "rooms", roomId, "members", user.uid);
+    const publicRoomRef = doc(db, "publicRooms", roomId);
+    const touchPresence = () => {
+      const lastActive = serverTimestamp();
+      setDoc(presenceRef, { lastActive }, { merge: true }).catch(() => {});
+      updateDoc(publicRoomRef, { lastActive }).catch(() => {});
+    };
+    touchPresence();
+    const heartbeat = window.setInterval(touchPresence, 60 * 1000);
+    return () => window.clearInterval(heartbeat);
+  }, [user, roomId]);
   const joinRoom = async (targetRoom, password = "") => {
     if (!user) return setAuthOpen(true);
     if (!db) return notify("Configura Firebase para entrar a salas");
@@ -1344,6 +1369,9 @@ function App() {
         isPlaying: true,
         updatedBy: user.uid,
         updatedAt: serverTimestamp(),
+      }).catch(() => {});
+      await updateDoc(doc(db, "publicRooms", targetRoom.id), {
+        lastActive: serverTimestamp(),
       }).catch(() => {});
     } catch {
       notify("No se pudo entrar a la sala");
@@ -1387,35 +1415,6 @@ function App() {
   useEffect(() => {
     if (roomId && !user) notify("Inicia sesión para unirte a la sala");
   }, [roomId, user]);
-  useEffect(() => {
-    const key = import.meta.env.VITE_TMDB_API_KEY;
-    if (!key) return;
-    fetch(
-      `https://api.themoviedb.org/3/trending/all/week?api_key=${key}&language=es-ES`,
-    )
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!data?.results) return;
-        setShows(
-          data.results
-            .filter((item) => item.poster_path)
-            .slice(0, 12)
-            .map((item) => ({
-              title: item.title || item.name,
-              type: item.media_type === "tv" ? "SERIE" : "PELÍCULA",
-              genre: "Drama",
-              service: "Catálogo",
-              year: (item.release_date || item.first_air_date || "").slice(
-                0,
-                4,
-              ),
-              rating: item.vote_average?.toFixed(1),
-              image: `https://image.tmdb.org/t/p/w780${item.poster_path}`,
-            })),
-        );
-      })
-      .catch(() => notify("No se pudo actualizar el catálogo"));
-  }, []);
   const filteredShows =
     activeTab === "Mi lista"
       ? shows.filter((show) => liked.includes(show.title))
@@ -1477,6 +1476,7 @@ function App() {
         playing: false,
         passwordProtected: newRoom.passwordProtected,
         passwordHash,
+        lastActive: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       setRoom(newRoom);
@@ -1671,7 +1671,7 @@ function App() {
                 <img src={shows[0].image} alt={shows[0].title} />
               ) : (
                 <div className="hero-art-empty">
-                  Configura TMDB para cargar títulos reales
+                  No hay contenido autorizado añadido
                 </div>
               )}
               <div className="floating-card">
@@ -1813,7 +1813,7 @@ function App() {
             {filteredShows.length === 0 && (
               <div className="empty-state">
                 <Search size={25} />
-                <p>No encontramos títulos para “{searchQuery}”.</p>
+                <p>No hay contenido autorizado disponible todavía.</p>
               </div>
             )}
           </section>
