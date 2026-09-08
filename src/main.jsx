@@ -358,12 +358,18 @@ function RoomCall({ roomId, user, notify = NOOP }) {
   const peerRef = useRef(null);
   const callRef = useRef(null);
   const seenCandidates = useRef(new Set());
+  const localStreamRef = useRef(null);
+  const screenStreamRef = useRef(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [callStatus, setCallStatus] = useState("idle");
+  const [sharingScreen, setSharingScreen] = useState(false);
 
   const stopCall = async () => {
     peerRef.current?.close();
     peerRef.current = null;
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
+    localStreamRef.current = null;
     localVideo.current?.srcObject?.getTracks().forEach((track) => track.stop());
     remoteVideo.current?.srcObject
       ?.getTracks()
@@ -372,6 +378,7 @@ function RoomCall({ roomId, user, notify = NOOP }) {
     callRef.current = null;
     setIncomingCall(null);
     setCallStatus("idle");
+    setSharingScreen(false);
   };
 
   const media = async () => {
@@ -380,7 +387,46 @@ function RoomCall({ roomId, user, notify = NOOP }) {
       video: true,
     });
     if (localVideo.current) localVideo.current.srcObject = stream;
+    localStreamRef.current = stream;
     return stream;
+  };
+
+  const replaceVideoTrack = async (track) => {
+    const sender = peerRef.current
+      ?.getSenders()
+      .find((item) => item.track?.kind === "video");
+    if (sender) await sender.replaceTrack(track);
+  };
+
+  const stopScreenShare = async () => {
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (cameraTrack) await replaceVideoTrack(cameraTrack);
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
+    if (localVideo.current) localVideo.current.srcObject = localStreamRef.current;
+    setSharingScreen(false);
+  };
+
+  const startScreenShare = async () => {
+    if (!peerRef.current || callStatus === "idle") {
+      notify("Primero inicia o acepta la llamada");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      const screenTrack = stream.getVideoTracks()[0];
+      await replaceVideoTrack(screenTrack);
+      screenStreamRef.current = stream;
+      if (localVideo.current) localVideo.current.srcObject = stream;
+      setSharingScreen(true);
+      screenTrack.addEventListener("ended", stopScreenShare, { once: true });
+    } catch (error) {
+      if (error?.name !== "NotAllowedError")
+        notify("No se pudo compartir la pantalla");
+    }
   };
 
   const createPeer = (callDocument) => {
@@ -557,9 +603,17 @@ function RoomCall({ roomId, user, notify = NOOP }) {
           <Phone size={16} /> Iniciar llamada
         </button>
       ) : (
-        <button className="danger-button" onClick={stopCall}>
-          Colgar llamada
-        </button>
+        <div className="call-actions">
+          <button
+            className="primary-button"
+            onClick={sharingScreen ? stopScreenShare : startScreenShare}
+          >
+            {sharingScreen ? "Dejar de compartir" : "Compartir pantalla"}
+          </button>
+          <button className="danger-button" onClick={stopCall}>
+            Colgar llamada
+          </button>
+        </div>
       )}
     </section>
   );
