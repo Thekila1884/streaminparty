@@ -989,7 +989,11 @@ function RoomModal({
           <div className="room-player-overlay">
             <span className="room-player-badge">
               <span className={room.playing ? "live-dot" : "paused-dot"} />{" "}
-              {room.playing ? "EN REPRODUCCIÓN" : "EN PAUSA"}
+              {room.playing
+                ? externalStreamingUrl
+                  ? "ESTADO COMPARTIDO: REPRODUCIENDO"
+                  : "EN REPRODUCCIÓN"
+                : "EN PAUSA"}
             </span>
             <strong>{displayTitle || "Sin título seleccionado"}</strong>
             <small>{selectedService} · sincronizado para la sala</small>
@@ -1017,13 +1021,14 @@ function RoomModal({
         </div>
         <div className="room-controls">
           <button onClick={() => changePlayback(false)}>
-            Pausar para todos
+            {externalStreamingUrl ? "Marcar pausa para todos" : "Pausar para todos"}
           </button>
           <button
             onClick={() => changePlayback(true)}
             className="primary-button"
           >
-            <Play size={15} fill="currentColor" /> Reproducir
+            <Play size={15} fill="currentColor" />
+            {externalStreamingUrl ? "Marcar reproducción" : "Reproducir"}
           </button>
         </div>
         <button className="primary-button full" onClick={copyLink}>
@@ -1398,18 +1403,12 @@ function App() {
       setRoom({
         id: targetRoom.id,
         ...targetRoom,
-        isPlaying: true,
-        playing: true,
+        isPlaying: targetRoom.isPlaying === true,
+        playing: targetRoom.playing === true,
       });
       setRoomOpen(true);
       setRoomsDirectoryOpen(false);
       setPendingRoom(null);
-      await updateDoc(doc(db, "rooms", targetRoom.id), {
-        playing: true,
-        isPlaying: true,
-        updatedBy: user.uid,
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
       await updateDoc(doc(db, "publicRooms", targetRoom.id), {
         lastActive: serverTimestamp(),
       }).catch(() => {});
