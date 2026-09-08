@@ -1609,6 +1609,15 @@ button {
   color: var(--muted);
   font-size: 10px;
 }
+.external-player-placeholder strong {
+  color: var(--cream);
+  font-size: 12px;
+  font-weight: 600;
+}
+.external-player-placeholder span {
+  color: var(--muted);
+  font-size: 9px;
+}
 .room-call {
   margin-top: 16px;
   border-top: 1px solid var(--line);

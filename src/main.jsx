@@ -104,6 +104,15 @@ function getYouTubeEmbedUrl(value) {
   }
 }
 
+function isExternalStreamingUrl(value) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return /(^|\.)netflix\.com$|(^|\.)disneyplus\.com$|(^|\.)primevideo\.com$|(^|\.)max\.com$|(^|\.)hbomax\.com$/.test(hostname);
+  } catch {
+    return false;
+  }
+}
+
 function CreateRoomModal({ onClose = NOOP, onCreate = NOOP }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -744,6 +753,7 @@ function RoomModal({
     (room.currentTitle && room.currentTitle !== "Selecciona un título"
       ? room.currentTitle
       : "");
+  const externalStreamingUrl = isExternalStreamingUrl(room.mediaUrl);
   const copyLink = async () => {
     await navigator.clipboard?.writeText(roomUrl);
     setCopying(true);
@@ -804,19 +814,33 @@ function RoomModal({
   const saveContentUrl = async (event) => {
     event.preventDefault();
     const cleanUrl = contentUrl.trim();
+    let parsedUrl;
     try {
-      const parsedUrl = new URL(cleanUrl);
+      parsedUrl = new URL(cleanUrl);
       if (!["http:", "https:"].includes(parsedUrl.protocol))
         throw new Error("protocol");
+    } catch {
+      notify("Introduce una URL completa que empiece por https://");
+      return;
+    }
+    try {
       await updateDoc(doc(db, "rooms", room.id), {
         mediaUrl: parsedUrl.toString(),
         currentTitle: room.currentTitle || parsedUrl.hostname,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
-      notify("Enlace guardado para toda la sala");
-    } catch {
-      notify("Introduce un enlace válido que empiece por https://");
+      notify(
+        isExternalStreamingUrl(parsedUrl.toString())
+          ? "Enlace oficial guardado. Ábrelo para reproducirlo en el servicio."
+          : "Enlace guardado para toda la sala",
+      );
+    } catch (error) {
+      notify(
+        error?.code === "permission-denied"
+          ? "No tienes permiso para actualizar esta sala."
+          : "No se pudo guardar el enlace en la sala.",
+      );
     }
   };
   return (
@@ -948,6 +972,12 @@ function RoomModal({
               playsInline
               poster={displayShow?.image}
             />
+          ) : externalStreamingUrl ? (
+            <div className="room-player-placeholder external-player-placeholder">
+              <Link2 size={28} />
+              <strong>Contenido disponible en {selectedService}</strong>
+              <span>Usa el botón “Abrir contenido” para reproducirlo.</span>
+            </div>
           ) : displayShow ? (
             <img src={displayShow.image} alt={displayShow.title} />
           ) : (
@@ -963,7 +993,17 @@ function RoomModal({
             </span>
             <strong>{displayTitle || "Sin título seleccionado"}</strong>
             <small>{selectedService} · sincronizado para la sala</small>
-            {room.mediaUrl && (
+            {room.mediaUrl && externalStreamingUrl && (
+              <a
+                className="room-content-link"
+                href={room.mediaUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir contenido en {selectedService}
+              </a>
+            )}
+            {room.mediaUrl && !externalStreamingUrl && (
               <small className="room-content-source">
                 Contenido: {room.mediaUrl}
               </small>
