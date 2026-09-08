@@ -630,7 +630,7 @@ button {
   padding: 20px;
 }
 .room-modal {
-  width: min(620px, calc(100vw - 32px));
+  width: min(1040px, calc(100vw - 64px));
   max-height: calc(100vh - 32px);
   overflow-y: auto;
   background: #191c22;
@@ -853,6 +853,19 @@ button {
     width: calc(100vw - 20px);
     max-height: calc(100vh - 20px);
     padding: 26px 18px;
+  }
+  .room-title-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 190px;
+    overflow-y: auto;
+    padding-right: 3px;
+  }
+  .service-access-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .service-access-link {
+    text-align: center;
   }
 }
 @media (max-width: 390px) {
@@ -1471,13 +1484,16 @@ button {
   background: rgba(199, 243, 107, 0.08);
 }
 .room-title-picker {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
   gap: 6px;
-  overflow-x: auto;
   padding-top: 9px;
 }
 .room-title {
-  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 38px;
+  text-align: left;
+  line-height: 1.25;
   padding: 6px 8px;
   border: 1px solid var(--line);
   background: transparent;
@@ -1521,7 +1537,7 @@ button {
   text-decoration: none;
 }
 .room-title-picker .room-section-label {
-  width: 100%;
+  grid-column: 1 / -1;
   margin-bottom: 2px;
 }
 .room-player-frame {

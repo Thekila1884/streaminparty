@@ -1647,7 +1647,8 @@ function App() {
           <section className="hero-section">
             <div className="hero-copy">
               <p className="eyebrow">
-                <span className="pulse" /> SALA ACTIVA AHORA
+                <span className="pulse" />
+                {room ? " SALA ACTIVA AHORA" : " EXPLORA EL CATÁLOGO"}
               </p>
               <h1>
                 Tu noche.
@@ -1692,7 +1693,9 @@ function App() {
                     <span className="live-dot" />{" "}
                     {room?.playing
                       ? "Reproduciendo sincronizado"
-                      : "Sala lista para empezar"}
+                      : room
+                        ? "Sala lista para empezar"
+                        : "Crea una sala para comenzar"}
                   </small>
                 </div>
                 <Play size={16} fill="currentColor" />
