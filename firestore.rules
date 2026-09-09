@@ -22,10 +22,7 @@ service cloud.firestore {
     match /rooms/{roomId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
       allow read: if signedIn();
-      allow update: if signedIn()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'currentTime', 'isPlaying', 'playing', 'updatedBy', 'updatedAt', 'currentTitle', 'service', 'mediaUrl'
-        ]);
+      allow update: if signedIn();
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
 
       match /members/{userId} {
