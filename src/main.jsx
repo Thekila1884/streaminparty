@@ -17,6 +17,7 @@ import {
   LogOut,
   MessageCircle,
   Phone,
+  Pause,
   Play,
   Plus,
   Search,
@@ -24,6 +25,7 @@ import {
   Settings,
   SlidersHorizontal,
   Sparkles,
+  RotateCcw,
   Users,
   X,
 } from "lucide-react";
@@ -869,15 +871,22 @@ function RoomModal({
   useEffect(() => {
     const video = playerRef.current;
     if (video instanceof HTMLVideoElement) {
-      if (typeof room.currentTime === "number") video.currentTime = room.currentTime;
-      const action = room.playing ? video.play() : video.pause();
-      if (action?.catch) action.catch(() => {});
+      if (typeof room.currentTime === "number")
+        video.currentTime = room.currentTime;
     } else {
       if (typeof room.currentTime === "number")
         sendYouTubeCommand("seekTo", [room.currentTime, true]);
+    }
+  }, [room.currentTime, room.mediaUrl]);
+  useEffect(() => {
+    const video = playerRef.current;
+    if (video instanceof HTMLVideoElement) {
+      const action = room.playing ? video.play() : video.pause();
+      if (action?.catch) action.catch(() => {});
+    } else {
       sendYouTubeCommand(room.playing ? "playVideo" : "pauseVideo");
     }
-  }, [room.playing, room.currentTime, room.mediaUrl]);
+  }, [room.playing]);
   const selectPlatform = async (service) => {
     if (!db) return;
     try {
@@ -1132,10 +1141,12 @@ function RoomModal({
         </div>
         <div className="room-controls">
           <button onClick={restartFromBeginning}>
+            <RotateCcw size={14} />
             Iniciar desde 0
           </button>
           <button onClick={() => changePlayback(false)}>
-            {externalStreamingUrl ? "Marcar pausa para todos" : "Pausar para todos"}
+            <Pause size={14} />
+            {externalStreamingUrl ? "Marcar pausa" : "Pausar para todos"}
           </button>
           <button
             onClick={() => changePlayback(true)}

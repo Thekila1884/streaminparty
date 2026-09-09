@@ -1103,13 +1103,18 @@ button {
 }
 .room-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 13px 0 20px;
 }
-.room-controls button:first-child {
+.room-controls button {
   background: #292e37;
   padding: 10px 12px;
   font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 .room-controls .primary-button {
   padding: 10px 12px;
