@@ -826,25 +826,58 @@ function RoomModal({
       notify("No se pudo actualizar la reproducción para la sala");
     }
   };
-  const sendYouTubeCommand = (playing) => {
+  const sendYouTubeCommand = (func, args = []) => {
     playerRef.current?.contentWindow?.postMessage(
       JSON.stringify({
         event: "command",
-        func: playing ? "playVideo" : "pauseVideo",
-        args: [],
+        func,
+        args,
       }),
       "*",
     );
   };
+  const restartFromBeginning = async () => {
+    if (!db || !user) return;
+    try {
+      await ensureRoomMembership();
+      await setDoc(
+        doc(db, "rooms", room.id),
+        {
+          currentTime: 0,
+          playing: true,
+          isPlaying: true,
+          updatedAt: serverTimestamp(),
+          updatedBy: user.uid,
+        },
+        { merge: true },
+      );
+      const video = playerRef.current;
+      if (video instanceof HTMLVideoElement) {
+        video.currentTime = 0;
+        const playPromise = video.play();
+        if (playPromise?.catch) playPromise.catch(() => {});
+      } else {
+        sendYouTubeCommand("seekTo", [0, true]);
+        sendYouTubeCommand("playVideo");
+      }
+      notify("La sala comenzará desde el inicio");
+    } catch (error) {
+      debugError("restart-from-zero-failed", error, { roomId: room.id });
+      notify("No se pudo reiniciar la reproducción");
+    }
+  };
   useEffect(() => {
     const video = playerRef.current;
     if (video instanceof HTMLVideoElement) {
+      if (typeof room.currentTime === "number") video.currentTime = room.currentTime;
       const action = room.playing ? video.play() : video.pause();
       if (action?.catch) action.catch(() => {});
     } else {
-      sendYouTubeCommand(room.playing);
+      if (typeof room.currentTime === "number")
+        sendYouTubeCommand("seekTo", [room.currentTime, true]);
+      sendYouTubeCommand(room.playing ? "playVideo" : "pauseVideo");
     }
-  }, [room.playing, room.mediaUrl]);
+  }, [room.playing, room.currentTime, room.mediaUrl]);
   const selectPlatform = async (service) => {
     if (!db) return;
     try {
@@ -1034,7 +1067,11 @@ function RoomModal({
               src={`${getYouTubeEmbedUrl(room.mediaUrl)}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
               title={displayTitle || "Contenido de la sala"}
               allow="autoplay; encrypted-media; picture-in-picture"
-              onLoad={() => sendYouTubeCommand(room.playing)}
+              onLoad={() => {
+                if (typeof room.currentTime === "number")
+                  sendYouTubeCommand("seekTo", [room.currentTime, true]);
+                sendYouTubeCommand(room.playing ? "playVideo" : "pauseVideo");
+              }}
               allowFullScreen
             />
           ) : room.mediaUrl && /\.(mp4|webm|ogg)(\?.*)?$/i.test(room.mediaUrl) ? (
@@ -1094,6 +1131,9 @@ function RoomModal({
           <strong>{displayTitle || "Selecciona un título"}</strong>
         </div>
         <div className="room-controls">
+          <button onClick={restartFromBeginning}>
+            Iniciar desde 0
+          </button>
           <button onClick={() => changePlayback(false)}>
             {externalStreamingUrl ? "Marcar pausa para todos" : "Pausar para todos"}
           </button>
