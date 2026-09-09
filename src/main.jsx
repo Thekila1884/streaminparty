@@ -1498,7 +1498,11 @@ function App() {
       }).catch(() => {});
     } catch (error) {
       debugError("join-room-failed", error, { roomId: targetRoom.id });
-      notify("No se pudo entrar a la sala");
+      notify(
+        error?.code === "not-found"
+          ? "Esta sala ya no existe. Busca una sala activa nueva."
+          : "No se pudo entrar a la sala",
+      );
     }
   };
   useEffect(() => {
