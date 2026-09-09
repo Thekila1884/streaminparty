@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     match /rooms/{roomId} {
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn();
       allow read: if signedIn();
       allow update: if signedIn();
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
