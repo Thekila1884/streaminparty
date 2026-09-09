@@ -12,7 +12,7 @@ service cloud.firestore {
 
     match /publicRooms/{roomId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn();
       allow update: if signedIn()
         && (resource.data.ownerId == request.auth.uid || isMember(roomId))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActive']);

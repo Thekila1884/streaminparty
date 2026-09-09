@@ -894,12 +894,12 @@ function RoomModal({
         host: parsedUrl.host,
         path: parsedUrl.pathname,
       });
-      await updateDoc(doc(db, "rooms", room.id), {
+      await setDoc(doc(db, "rooms", room.id), {
         mediaUrl: parsedUrl.toString(),
         currentTitle: room.currentTitle || parsedUrl.hostname,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
-      });
+      }, { merge: true });
       notify(
         isExternalStreamingUrl(parsedUrl.toString())
           ? "Enlace oficial guardado. Ábrelo para reproducirlo en el servicio."
