@@ -5,6 +5,10 @@ service cloud.firestore {
     function isMember(roomId) {
       return signedIn() && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
     }
+    function isRoomOwner(roomId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/rooms/$(roomId)).data.ownerId == request.auth.uid;
+    }
 
     match /users/{userId} {
       allow read, update: if signedIn() && request.auth.uid == userId;
@@ -22,8 +26,8 @@ service cloud.firestore {
 
     match /rooms/{roomId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read: if isMember(roomId);
-      allow update: if isMember(roomId)
+      allow read: if isMember(roomId) || isRoomOwner(roomId);
+      allow update: if (isMember(roomId) || isRoomOwner(roomId))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'currentTime', 'isPlaying', 'playing', 'updatedBy', 'updatedAt', 'currentTitle', 'service', 'mediaUrl'
         ])
