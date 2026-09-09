@@ -118,7 +118,7 @@ function getYouTubeEmbedUrl(value) {
 function isExternalStreamingUrl(value) {
   try {
     const hostname = new URL(value).hostname.toLowerCase();
-    return /(^|\.)netflix\.com$|(^|\.)disneyplus\.com$|(^|\.)primevideo\.com$|(^|\.)max\.com$|(^|\.)hbomax\.com$/.test(hostname);
+    return /(^|\.)netflix\.com$|(^|\.)disneyplus\.com$|(^|\.)primevideo\.com$|(^|\.)max\.com$|(^|\.)hbomax\.com$|(^|\.)apple\.com$|(^|\.)crunchyroll\.com$/.test(hostname);
   } catch {
     return false;
   }
@@ -815,11 +815,11 @@ function RoomModal({
     try {
       await ensureRoomMembership();
       debugLog("room-update-start", { roomId: room.id, fields: ["playing", "updatedAt", "updatedBy"] });
-      await updateDoc(doc(db, "rooms", room.id), {
+      await setDoc(doc(db, "rooms", room.id), {
         playing,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
-      });
+      }, { merge: true });
       debugLog("room-update-success", { roomId: room.id, playing });
     } catch (error) {
       debugError("room-update-failed", error, { roomId: room.id, playing });
@@ -849,12 +849,12 @@ function RoomModal({
     if (!db) return;
     try {
       await ensureRoomMembership();
-      await updateDoc(doc(db, "rooms", room.id), {
+      await setDoc(doc(db, "rooms", room.id), {
         service,
         currentTitle: room.currentTitle || "",
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
-      });
+      }, { merge: true });
     } catch {
       notify("No se pudo actualizar esta sala.");
     }
@@ -863,12 +863,12 @@ function RoomModal({
     if (!db || !title) return;
     try {
       await ensureRoomMembership();
-      await updateDoc(doc(db, "rooms", room.id), {
+      await setDoc(doc(db, "rooms", room.id), {
         service: selectedService,
         currentTitle: title,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
-      });
+      }, { merge: true });
       notify(`${title} seleccionado para ${selectedService}`);
       setGoogleSearchOpen(false);
     } catch {
@@ -968,12 +968,12 @@ function RoomModal({
                 </small>
               </div>
               <a
-                href={selectedServiceInfo.url}
+                href={room.mediaUrl || selectedServiceInfo.url}
                 target="_blank"
                 rel="noreferrer"
                 className="service-access-link"
               >
-                Abrir {selectedService}
+                {room.mediaUrl ? "Abrir contenido exacto" : `Abrir ${selectedService}`}
               </a>
             </div>
           )}
@@ -1633,12 +1633,12 @@ function App() {
       ),
     );
     if (db && room && user)
-      await updateDoc(doc(db, "rooms", room.id), {
+      await setDoc(doc(db, "rooms", room.id), {
         currentTitle: show.title,
         service: show.service,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
-      });
+      }, { merge: true });
     notify(`${show.title} seleccionado para la sala`);
   };
   const logout = async () => {
