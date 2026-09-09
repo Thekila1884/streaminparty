@@ -132,12 +132,16 @@ function CreateRoomModal({ onClose = NOOP, onCreate = NOOP }) {
         <h2>Crea tu sala</h2>
         <p>Comparte el enlace con tus amigos. La contraseña es opcional.</p>
         <input
+          id="room-name"
+          name="roomName"
           className="auth-input"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Nombre de la sala"
         />
         <input
+          id="room-password"
+          name="roomPassword"
           className="auth-input"
           type="password"
           value={password}
@@ -177,6 +181,8 @@ function RoomAccessModal({ room, onClose = NOOP, onJoin = NOOP }) {
           sincronizada.
         </p>
         <input
+          id="access-password"
+          name="accessPassword"
           className="auth-input"
           autoFocus
           type="password"
@@ -222,6 +228,8 @@ function RoomsDirectoryModal({
         <p className="eyebrow">SALAS ACTIVAS</p>
         <h2>Encuentra una sala</h2>
         <input
+          id="room-search"
+          name="roomSearch"
           className="auth-input"
           value={queryText}
           onChange={(event) => onQueryChange(event.target.value)}
@@ -340,6 +348,8 @@ function RoomChat({ roomId, user, notify = NOOP }) {
       </div>
       <form className="chat-composer" onSubmit={sendMessage}>
         <input
+          id="chat-message"
+          name="message"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="Escribe un mensaje..."
@@ -688,6 +698,8 @@ function AuthModal({ onClose = NOOP, notify = NOOP }) {
         <form onSubmit={submit}>
           {register && (
             <input
+              id="auth-name"
+              name="name"
               className="auth-input"
               required
               value={name}
@@ -696,6 +708,8 @@ function AuthModal({ onClose = NOOP, notify = NOOP }) {
             />
           )}
           <input
+            id="auth-email"
+            name="email"
             className="auth-input"
             required
             type="email"
@@ -704,6 +718,8 @@ function AuthModal({ onClose = NOOP, notify = NOOP }) {
             placeholder="Correo electrónico"
           />
           <input
+            id="auth-password"
+            name="password"
             className="auth-input"
             required
             minLength="6"
@@ -754,6 +770,18 @@ function RoomModal({
       ? room.currentTitle
       : "");
   const externalStreamingUrl = isExternalStreamingUrl(room.mediaUrl);
+  const ensureRoomMembership = async () => {
+    if (!db || !user) return false;
+    await setDoc(
+      doc(db, "rooms", room.id, "members", user.uid),
+      {
+        displayName: user.displayName || user.email,
+        lastActive: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return true;
+  };
   const copyLink = async () => {
     await navigator.clipboard?.writeText(roomUrl);
     setCopying(true);
@@ -763,6 +791,7 @@ function RoomModal({
   const changePlayback = async (playing) => {
     if (!db || !user) return;
     try {
+      await ensureRoomMembership();
       await updateDoc(doc(db, "rooms", room.id), {
         playing,
         updatedAt: serverTimestamp(),
@@ -793,23 +822,33 @@ function RoomModal({
   }, [room.playing, room.mediaUrl]);
   const selectPlatform = async (service) => {
     if (!db) return;
-    await updateDoc(doc(db, "rooms", room.id), {
-      service,
-      currentTitle: room.currentTitle || "",
-      updatedAt: serverTimestamp(),
-      updatedBy: user.uid,
-    });
+    try {
+      await ensureRoomMembership();
+      await updateDoc(doc(db, "rooms", room.id), {
+        service,
+        currentTitle: room.currentTitle || "",
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+      });
+    } catch {
+      notify("No se pudo actualizar esta sala.");
+    }
   };
   const selectGoogleResult = async (title) => {
     if (!db || !title) return;
-    await updateDoc(doc(db, "rooms", room.id), {
-      service: selectedService,
-      currentTitle: title,
-      updatedAt: serverTimestamp(),
-      updatedBy: user.uid,
-    });
-    notify(`${title} seleccionado para ${selectedService}`);
-    setGoogleSearchOpen(false);
+    try {
+      await ensureRoomMembership();
+      await updateDoc(doc(db, "rooms", room.id), {
+        service: selectedService,
+        currentTitle: title,
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+      });
+      notify(`${title} seleccionado para ${selectedService}`);
+      setGoogleSearchOpen(false);
+    } catch {
+      notify("No se pudo actualizar esta sala.");
+    }
   };
   const saveContentUrl = async (event) => {
     event.preventDefault();
@@ -824,6 +863,7 @@ function RoomModal({
       return;
     }
     try {
+      await ensureRoomMembership();
       await updateDoc(doc(db, "rooms", room.id), {
         mediaUrl: parsedUrl.toString(),
         currentTitle: room.currentTitle || parsedUrl.hostname,
@@ -936,6 +976,8 @@ function RoomModal({
           <div className="room-section-label">ENLACE DEL CONTENIDO</div>
           <div className="room-url-fields">
             <input
+              id="content-url"
+              name="contentUrl"
               type="url"
               required
               value={contentUrl}
@@ -1651,6 +1693,8 @@ function App() {
           <div className="search-box">
             <Search size={18} />
             <input
+              id="search-content"
+              name="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Buscar películas, series..."
