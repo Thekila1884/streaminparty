@@ -53,6 +53,17 @@ import { auth, db, firebaseReady } from "./firebase";
 import "./styles.css";
 
 const NOOP = () => {};
+const debugLog = (event, details = {}) => {
+  console.info(`[Streaminparty] ${event}`, details);
+};
+const debugError = (event, error, details = {}) => {
+  console.error(`[Streaminparty] ${event}`, {
+    ...details,
+    code: error?.code || "unknown",
+    name: error?.name || "unknown",
+    message: error?.message || String(error),
+  });
+};
 
 const services = [
   { name: "Todos", color: "#f1f1ed" },
@@ -771,16 +782,27 @@ function RoomModal({
       : "");
   const externalStreamingUrl = isExternalStreamingUrl(room.mediaUrl);
   const ensureRoomMembership = async () => {
-    if (!db || !user) return false;
-    await setDoc(
-      doc(db, "rooms", room.id, "members", user.uid),
-      {
-        displayName: user.displayName || user.email,
-        lastActive: serverTimestamp(),
-      },
-      { merge: true },
-    );
-    return true;
+    if (!db || !user) {
+      debugLog("membership-skipped", { roomId: room.id, hasDb: Boolean(db), hasUser: Boolean(user) });
+      return false;
+    }
+    try {
+      const memberPath = `rooms/${room.id}/members/${user.uid}`;
+      debugLog("membership-write-start", { path: memberPath, uid: user.uid });
+      await setDoc(
+        doc(db, "rooms", room.id, "members", user.uid),
+        {
+          displayName: user.displayName || user.email,
+          lastActive: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      debugLog("membership-write-success", { path: memberPath });
+      return true;
+    } catch (error) {
+      debugError("membership-write-failed", error, { roomId: room.id, uid: user.uid });
+      throw error;
+    }
   };
   const copyLink = async () => {
     await navigator.clipboard?.writeText(roomUrl);
@@ -792,12 +814,15 @@ function RoomModal({
     if (!db || !user) return;
     try {
       await ensureRoomMembership();
+      debugLog("room-update-start", { roomId: room.id, fields: ["playing", "updatedAt", "updatedBy"] });
       await updateDoc(doc(db, "rooms", room.id), {
         playing,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
-    } catch {
+      debugLog("room-update-success", { roomId: room.id, playing });
+    } catch (error) {
+      debugError("room-update-failed", error, { roomId: room.id, playing });
       notify("No se pudo actualizar la reproducción para la sala");
     }
   };
@@ -864,6 +889,11 @@ function RoomModal({
     }
     try {
       await ensureRoomMembership();
+      debugLog("media-update-start", {
+        roomId: room.id,
+        host: parsedUrl.host,
+        path: parsedUrl.pathname,
+      });
       await updateDoc(doc(db, "rooms", room.id), {
         mediaUrl: parsedUrl.toString(),
         currentTitle: room.currentTitle || parsedUrl.hostname,
@@ -875,7 +905,9 @@ function RoomModal({
           ? "Enlace oficial guardado. Ábrelo para reproducirlo en el servicio."
           : "Enlace guardado para toda la sala",
       );
+      debugLog("media-update-success", { roomId: room.id, host: parsedUrl.host });
     } catch (error) {
+      debugError("media-update-failed", error, { roomId: room.id, host: parsedUrl.host });
       notify(
         error?.code === "permission-denied"
           ? "No tienes permiso para actualizar esta sala."
@@ -1378,7 +1410,14 @@ function App() {
   };
   useEffect(() => {
     if (!auth) return undefined;
-    const unsubscribe = onAuthStateChanged(auth, setUser);
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      debugLog("auth-state", {
+        authenticated: Boolean(nextUser),
+        uid: nextUser?.uid || null,
+        email: nextUser?.email || null,
+      });
+      setUser(nextUser);
+    });
     return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, []);
   useEffect(() => {
@@ -1402,7 +1441,10 @@ function App() {
           }
         });
       },
-      () => notify("No se pudieron cargar las salas activas"),
+      (error) => {
+        debugError("public-rooms-listener-failed", error);
+        notify("No se pudieron cargar las salas activas");
+      },
     );
     return typeof unsubscribe === "function" ? unsubscribe : undefined;
   }, [user]);
@@ -1454,7 +1496,8 @@ function App() {
       await updateDoc(doc(db, "publicRooms", targetRoom.id), {
         lastActive: serverTimestamp(),
       }).catch(() => {});
-    } catch {
+    } catch (error) {
+      debugError("join-room-failed", error, { roomId: targetRoom.id });
       notify("No se pudo entrar a la sala");
     }
   };
@@ -1482,11 +1525,15 @@ function App() {
               setRoomOpen(true);
             }
           },
-          () => notify("No se pudo leer la sala"),
+          (error) => {
+            debugError("room-listener-failed", error, { roomId });
+            notify("No se pudo leer la sala");
+          },
         );
         unsubscribe =
           typeof roomUnsubscribe === "function" ? roomUnsubscribe : () => {};
-      } catch {
+      } catch (error) {
+        debugError("room-link-join-failed", error, { roomId });
         notify("No se pudo unir a la sala");
       }
     };
